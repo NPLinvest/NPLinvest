@@ -1,127 +1,1048 @@
-export const config = { api: { bodyParser: false } };
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NPL Invest</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F0F2F5;color:#0A1628;min-height:100vh}
+.header{background:#0A1628;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:300}
+.hb{display:flex;align-items:center;gap:10px}
+.hlogo{width:30px;height:30px;background:#1A3A5C;border-radius:6px;display:flex;align-items:center;justify-content:center;border:0.5px solid #2A5080;font-size:14px}
+.htitle{font-size:14px;font-weight:600;color:#fff;letter-spacing:.04em}
+.hdot{width:4px;height:4px;border-radius:50%;background:#378ADD;margin:0 4px}
+.hsub{font-size:11px;color:#5A8AB0}
+.apill{background:#3D1515;color:#F09595;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500;display:none;align-items:center;gap:4px;border:0.5px solid #6B2222}
+.nav{background:#0F1F38;display:flex;padding:0 20px;border-bottom:0.5px solid #1A2F4A;overflow-x:auto}
+.ni{padding:12px 14px;font-size:10px;font-weight:600;color:#4A6A8A;cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:5px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.ni.active{color:#7BB8F0;border-bottom-color:#378ADD}
+.ni:hover:not(.active){color:#8AABCC}
+.body{padding:20px 20px 40px;max-width:1280px;margin:0 auto}
+.page{display:none}.page.active{display:block}
+.ph{margin-bottom:16px}
+.pt{font-size:20px;font-weight:600;color:#0A1628}
+.ps{font-size:13px;color:#6B7E96;margin-top:3px}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:0.5px solid #DDE3EC;border-radius:12px;padding:16px 16px 14px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,#185FA5)}
+.kv{font-size:22px;font-weight:600;color:#0A1628;line-height:1.1;margin-top:6px}
+.kl{font-size:10px;color:#8A9BB0;text-transform:uppercase;letter-spacing:.07em;font-weight:500}
+.panel{background:#fff;border:0.5px solid #DDE3EC;border-radius:12px;padding:16px 18px;margin-bottom:12px}
+.phead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:0.5px solid #EEF1F5}
+.ptitle{font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:6px}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label{font-size:10px;font-weight:600;color:#6B7E96;text-transform:uppercase;letter-spacing:.06em}
+.field input,.field select,.field textarea{width:100%;padding:8px 10px;border:0.5px solid #C8D0DC;border-radius:8px;font-size:13px;color:#0A1628;background:#fff;font-family:inherit}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#378ADD;box-shadow:0 0 0 3px rgba(55,138,221,.1)}
+.field textarea{resize:vertical;min-height:48px}
+.field input.ai-filled{border-color:#2A6E14;background:#F0FAE8}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none}
+.btn-dark{background:#0A1628;color:#fff}.btn-dark:hover{background:#0F2040}
+.btn-blue{background:#185FA5;color:#fff}.btn-blue:hover{background:#1A6AB8}
+.btn-green{background:#2A6E14;color:#fff}.btn-green:hover{background:#235E10}
+.btn-out{background:#fff;color:#3A4A5C;border:0.5px solid #C8D0DC}.btn-out:hover{background:#F5F7FA}
+.btn-amber{background:#854F0B;color:#fff}.btn-amber:hover{opacity:.9}
+.btn-purple{background:#6B21A8;color:#fff}.btn-purple:hover{opacity:.9}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-xs{padding:4px 8px;font-size:11px}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600}
+.bok{background:#E8F5E0;color:#2A5E12;border:0.5px solid #B2D98A}
+.bwarn{background:#FEF3E2;color:#7A4A0A;border:0.5px solid #F5C878}
+.bdanger{background:#FEECEC;color:#7A1A1A;border:0.5px solid #F0A0A0}
+.binfo{background:#E4F0FC;color:#0F3D6E;border:0.5px solid #9DCAF0}
+.bgray{background:#F0F2F5;color:#4A5A6A;border:0.5px solid #C8D0DC}
+.bpurple{background:#F5F0FF;color:#6B21A8;border:0.5px solid #C4B5FD}
+.bfin{background:#0A1628;color:#fff;border:0.5px solid #0A1628}
+.strk{height:6px;border-radius:3px;background:#EEF1F5;overflow:hidden;margin:6px 0}
+.sfil{height:100%;border-radius:3px;transition:width .6s}
+.brow{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px}
+.blbl{width:90px;color:#8A9BB0;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btrk{flex:1;height:14px;background:#EEF1F5;border-radius:3px;overflow:hidden}
+.bfil{height:100%;border-radius:3px}
+.bval{width:60px;font-weight:600;color:#0A1628;text-align:right;flex-shrink:0;font-size:12px}
+.aiarea{background:#F7F9FC;border:0.5px solid #DDE3EC;border-radius:10px;padding:14px;font-size:13px;line-height:1.8;color:#0A1628;min-height:80px;white-space:pre-wrap}
+.dtable{width:100%;border-collapse:collapse;font-size:12px}
+.dtable th{text-align:left;font-weight:600;color:#8A9BB0;padding:7px 8px;border-bottom:0.5px solid #DDE3EC;text-transform:uppercase;letter-spacing:.05em;font-size:10px}
+.dtable td{padding:9px 8px;border-bottom:0.5px solid #EEF1F5;color:#0A1628;vertical-align:middle}
+.dtable tr:last-child td{border-bottom:none}
+.dtable tr:hover td{background:#F7F9FC}
+.tr{text-align:right}.tb{font-weight:600}
+.empty{text-align:center;padding:36px 16px;color:#8A9BB0}
+.rhead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:10px;margin-bottom:12px}
+.ftabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.ftab{padding:6px 12px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;border:0.5px solid #C8D0DC;background:#fff;color:#6B7E96;text-transform:uppercase;letter-spacing:.05em}
+.ftab.active{background:#0A1628;color:#fff;border-color:#0A1628}
+.drop-zone{border:1.5px dashed #9DCAF0;border-radius:12px;padding:20px 16px;text-align:center;cursor:pointer;background:#F7FBFF}
+.drop-zone:hover,.drop-zone.over{background:#EDF5FF;border-color:#378ADD}
+.doc-chip{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#EBF7E2;border:0.5px solid #B2D98A;border-radius:8px;margin-top:8px}
+.extract-banner{background:#E4F0FC;border:0.5px solid #9DCAF0;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-top:10px}
+.gasto-row{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#F7F9FC;border:0.5px solid #EEF1F5;border-radius:7px;margin-bottom:5px}
+.gasto-del{padding:3px 6px;border:0.5px solid #DDE3EC;border-radius:4px;background:#fff;cursor:pointer;color:#8A9BB0;font-size:12px}
+.gasto-del:hover{background:#FEECEC;color:#7A1A1A}
+.gtotal{display:inline-flex;align-items:center;gap:4px;background:#FEECEC;color:#7A1A1A;border:0.5px solid #F0A0A0;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:600}
+#map,#ficha-map-el{height:220px;border-radius:10px;border:0.5px solid #DDE3EC;z-index:1}
+.portales-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.portal-btn{display:flex;align-items:center;justify-content:center;gap:5px;padding:8px;border-radius:8px;font-size:11px;font-weight:600;text-decoration:none;border:0.5px solid}
+.portal-btn:hover{opacity:.85}
+.pi{background:#F5F0FF;color:#6B21A8;border-color:#C4B5FD}
+.pf{background:#FFF0F0;color:#BE123C;border-color:#FECDD3}
+.ph2{background:#FFF7E6;color:#92400E;border-color:#FCD34D}
+.pk{background:#F0FFF4;color:#14532D;border-color:#86EFAC}
+.pp{background:#EFF6FF;color:#1E40AF;border-color:#BFDBFE}
+.pc{background:#F8FAFC;color:#374151;border-color:#CBD5E0}
+.addr-suggestions{position:absolute;z-index:400;background:#fff;border:0.5px solid #C8D0DC;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);width:100%;max-height:180px;overflow-y:auto}
+.addr-sug{padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:0.5px solid #EEF1F5;color:#0A1628}
+.addr-sug:last-child{border-bottom:none}
+.addr-sug:hover{background:#F0F2F5}
+.addr-wrap{position:relative}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,22,40,.55);z-index:500;overflow-y:auto;padding:20px}
+.modal-overlay.open{display:flex;align-items:flex-start;justify-content:center}
+.modal{background:#F0F2F5;border-radius:16px;width:100%;max-width:980px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-header{background:#0A1628;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.modal-header h2{font-size:15px;font-weight:600;color:#fff}
+.modal-close{background:none;border:none;color:#7BB8F0;font-size:20px;cursor:pointer;padding:4px 8px;border-radius:6px}
+.modal-close:hover{background:#1A3A5C}
+.modal-body{padding:16px}
+.modal-tabs{display:flex;gap:4px;margin-bottom:14px;background:#E8ECF2;border-radius:8px;padding:4px;overflow-x:auto}
+.modal-tab{padding:7px 11px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;color:#6B7E96;text-transform:uppercase;letter-spacing:.05em;flex:1;text-align:center;white-space:nowrap}
+.modal-tab.active{background:#fff;color:#0A1628;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.nego-range{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}
+.nego-box{border-radius:10px;padding:13px;text-align:center;border:1px solid}
+.nego-min{background:#FEECEC;border-color:#F0A0A0}
+.nego-opt{background:#EBF7E2;border-color:#B2D98A}
+.nego-max{background:#FEF3E2;border-color:#F5C878}
+.nego-val{font-size:19px;font-weight:700;margin-bottom:3px}
+.nego-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.7}
+.nego-sub{font-size:10px;margin-top:3px;opacity:.8;line-height:1.4}
+.estrategia-box{border-radius:10px;padding:13px 15px;margin-bottom:10px;border-left:4px solid}
+.estrat-c{background:#EBF7E2;border-color:#2A6E14}
+.estrat-m{background:#FEF3E2;border-color:#8A5A0A}
+.estrat-a{background:#FEECEC;border-color:#8A1818}
+.riesgo-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}
+.riesgo-item{padding:9px 11px;border-radius:8px;display:flex;align-items:center;gap:7px;border:0.5px solid;font-size:11px;font-weight:500}
+.r-ok{background:#EBF7E2;border-color:#B2D98A;color:#2A5E12}
+.r-warn{background:#FEF3E2;border-color:#F5C878;color:#7A4A0A}
+.op-card{background:#fff;border:0.5px solid #DDE3EC;border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .15s}
+.op-card:hover{border-color:#378ADD;box-shadow:0 2px 12px rgba(55,138,221,.12);transform:translateY(-1px)}
+.op-card.finalizada{border-color:#B2D98A;background:linear-gradient(135deg,#fff 0%,#F8FDF4 100%)}
+.op-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.op-card-metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.op-card-metric{text-align:center;padding:7px;background:#F7F9FC;border-radius:6px}
+.op-card-metric-val{font-size:13px;font-weight:700;color:#0A1628}
+.op-card-metric-lbl{font-size:9px;color:#8A9BB0;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.estudio-card{background:#fff;border:0.5px solid #F5C878;border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .15s}
+.estudio-card:hover{border-color:#E8A800;box-shadow:0 2px 12px rgba(232,168,0,.15);transform:translateY(-1px)}
+.convertir-banner{background:#EBF7E2;border:1px solid #B2D98A;border-radius:10px;padding:13px 15px;display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.finalizar-banner{background:#F5F0FF;border:1px solid #C4B5FD;border-radius:10px;padding:13px 15px;margin-bottom:12px}
+.ref-cat-link{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:#F8FAFC;border:0.5px solid #CBD5E0;border-radius:6px;font-size:11px;color:#374151;text-decoration:none;font-weight:500}
+.ref-cat-link:hover{background:#EDF5FF;border-color:#378ADD;color:#185FA5}
+.fiscal-box{border-radius:10px;overflow:hidden;border:0.5px solid #DDE3EC;margin-top:10px}
+.fiscal-row{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:0.5px solid #EEF1F5;font-size:13px}
+.fiscal-row:last-child{border-bottom:none}
+.fiscal-row.total{background:#F0F2F5;font-weight:700;font-size:14px}
+.fiscal-row.impuesto{background:#FEF3E2}
+.fiscal-row.beneficio{background:#EBF7E2;font-weight:700;font-size:15px}
+.gasto-form{background:#F7F9FC;border:0.5px solid #DDE3EC;border-radius:10px;padding:13px;margin-top:10px}
+@media(max-width:640px){.g2,.g3,.portales-grid,.nego-range,.riesgo-grid,.op-card-metrics{grid-template-columns:1fr 1fr}.modal{border-radius:12px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="hb">
+    <div class="hlogo">🏦</div>
+    <div class="htitle">NPL Invest</div>
+    <div class="hdot"></div>
+    <div class="hsub">Plataforma de inversión en deuda</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="apill" id="alert-pill">⚠ <span id="alert-count">0</span></div>
+    <div style="width:28px;height:28px;border-radius:50%;background:#1A3A5C;border:0.5px solid #2A5080;display:flex;align-items:center;justify-content:center;font-size:13px">👤</div>
+  </div>
+</div>
+<div class="nav">
+  <div class="ni active" onclick="showPage('dashboard')">📊 Dashboard</div>
+  <div class="ni" onclick="showPage('inversiones')">💼 Inversiones</div>
+  <div class="ni" onclick="showPage('estudio')">🔍 En estudio</div>
+  <div class="ni" onclick="showPage('alertas')">🔔 Alertas</div>
+</div>
+<div class="body">
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="ph"><div class="pt">Dashboard</div><div class="ps">Capital real invertido y rendimiento del portfolio</div></div>
+  <div class="kgrid" id="dash-kpis"></div>
+  <div class="g2" style="gap:12px;margin-bottom:12px">
+    <div class="panel"><div class="phead"><span class="ptitle">📊 Por estrategia</span></div><div id="dash-est"></div></div>
+    <div class="panel"><div class="phead"><span class="ptitle">🏆 Top beneficio neto</span></div><div id="dash-top"></div></div>
+  </div>
+  <div class="panel">
+    <div class="phead"><span class="ptitle">💼 Inversiones activas</span><button class="btn btn-out btn-xs" onclick="showPage('inversiones')">Ver todas →</button></div>
+    <div id="dash-inversiones"></div>
+  </div>
+  <div class="panel" style="border-color:#F5C878">
+    <div class="phead" style="border-bottom-color:#FEF3E2"><span class="ptitle" style="color:#854F0B">🔍 En estudio</span><button class="btn btn-out btn-xs" onclick="showPage('estudio')">Ver →</button></div>
+    <div id="dash-estudios"></div>
+  </div>
+</div>
 
-  try {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const buffer = Buffer.concat(chunks);
-    const boundary = req.headers['content-type'].split('boundary=')[1];
+<!-- INVERSIONES -->
+<div id="page-inversiones" class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div><div class="pt">Inversiones</div><div class="ps">Abiertas y finalizadas</div></div>
+    <button class="btn btn-dark btn-sm" onclick="abrirFormulario('inversion')">➕ Nueva inversión</button>
+  </div>
+  <div class="ftabs">
+    <div class="ftab active" onclick="filtrarInv('todas',this)">Todas</div>
+    <div class="ftab" onclick="filtrarInv('abiertas',this)">💼 Abiertas</div>
+    <div class="ftab" onclick="filtrarInv('finalizadas',this)">✅ Finalizadas</div>
+    <div class="ftab" onclick="filtrarInv('extrajudicial',this)">Extrajudicial</div>
+    <div class="ftab" onclick="filtrarInv('judicial',this)">Judicial</div>
+  </div>
+  <div id="inv-cards"></div>
+</div>
 
-    // Parsear multipart manualmente
-    const parts = buffer.toString('binary').split('--' + boundary);
-    const docs = [];
-    let count = 0;
+<!-- EN ESTUDIO -->
+<div id="page-estudio" class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div><div class="pt">En estudio</div><div class="ps">Análisis de oportunidades — no afectan al capital invertido</div></div>
+    <button class="btn btn-amber btn-sm" onclick="abrirFormulario('estudio')">🔍 Nuevo estudio</button>
+  </div>
+  <div id="est-cards"></div>
+</div>
 
-    for (const part of parts) {
-      if (part.includes('name="count"')) {
-        const match = part.match(/\r\n\r\n(\d+)/);
-        if (match) count = parseInt(match[1]);
-      }
-      if (part.includes('name="doc_')) {
-        const jsonMatch = part.match(/\r\n\r\n({.*})/s);
-        if (jsonMatch) {
-          try {
-            docs.push(JSON.parse(jsonMatch[1].trim()));
-          } catch (e) {}
-        }
-      }
-    }
+<!-- ALERTAS -->
+<div id="page-alertas" class="page">
+  <div class="ph"><div class="pt">Alertas</div><div class="ps">Riesgos activos en inversiones abiertas</div></div>
+  <div class="panel"><div id="alertas-lista"></div></div>
+</div>
 
-    if (!docs.length) {
-      return res.status(400).json({ error: 'No documents provided' });
-    }
+</div>
 
-    // Construir contenido para Claude
-    const content = [];
-    for (const doc of docs) {
-      if (doc.mime === 'application/pdf') {
-        content.push({
-          type: 'document',
-          source: { type: 'base64', media_type: 'application/pdf', data: doc.b64 }
-        });
-      } else {
-        content.push({
-          type: 'image',
-          source: { type: 'base64', media_type: doc.mime, data: doc.b64 }
-        });
-      }
-    }
+<!-- MODAL FORMULARIO -->
+<div class="modal-overlay" id="form-overlay" onclick="closeMod('form-overlay',event)">
+  <div class="modal"><div class="modal-header"><h2 id="form-title">Nueva operación</h2><button class="modal-close" onclick="closeMod('form-overlay')">✕</button></div>
+  <div class="modal-body" id="form-body"></div></div>
+</div>
 
-    content.push({
-      type: 'text',
-      text: `Eres un abogado experto en inversión NPL en España. Analiza estos documentos de una operación hipotecaria y extrae los datos para rellenar una ficha de inversión.
+<!-- MODAL FICHA -->
+<div class="modal-overlay" id="ficha-overlay" onclick="closeMod('ficha-overlay',event)">
+  <div class="modal"><div class="modal-header"><h2 id="ficha-title">Operación</h2><button class="modal-close" onclick="closeMod('ficha-overlay')">✕</button></div>
+  <div class="modal-body">
+    <div class="modal-tabs" id="ficha-tabs"></div>
+    <div id="ft-resumen"></div>
+    <div id="ft-fiscal" style="display:none"></div>
+    <div id="ft-negociacion" style="display:none"></div>
+    <div id="ft-inmueble" style="display:none"></div>
+    <div id="ft-gastos" style="display:none"></div>
+    <div id="ft-dictamen" style="display:none"></div>
+  </div></div>
+</div>
 
-Responde ÚNICAMENTE con un objeto JSON con exactamente estas claves (usa null si no encuentras el dato):
-{
-  "capital": número (capital principal pendiente en euros, sin céntimos),
-  "intereses": número (intereses ordinarios devengados en euros),
-  "tasacion": número (valor de tasación para subasta en euros),
-  "mercado": número (valor de mercado estimado en euros, si aparece),
-  "cargas_anteriores": número (importe de cargas anteriores a la hipoteca en euros),
-  "refCatastral": string (referencia catastral, formato como 1234567AB1234A0001AB),
-  "direccion": string (dirección completa del inmueble: calle, número, municipio, provincia),
-  "metros": número (superficie en m²),
-  "habitaciones": número (número de habitaciones),
-  "banos": número (número de baños),
-  "planta": string (planta del inmueble, ej: "3º", "bajo", "ático"),
-  "tipo": "hipotecario_segunda" | "hipotecario_primera" | "ordinario",
-  "tipo_inmueble": "piso" | "atico" | "bajo" | "bajo_jardin" | "local" | "chalet" | "solar",
-  "fase": "prejudicial" | "monitorio" | "ejecucion_admitida" | "tasacion_hecha" | "subasta_senalada",
-  "clausulas": "si" | "no_revisadas" | "pendiente",
-  "observaciones": string (máximo 150 palabras con hallazgos clave: cláusulas detectadas, estado del inmueble, deudor, riesgos jurídicos identificados)
+<script>
+// ── DATOS ─────────────────────────────────────────────────────────────────────
+const SK='npl_inv_v2';const EK='npl_est_v2';const GK='npl_gas_v2';
+let curDocs=[],curFormTipo='inversion',mapInst=null,addrTimer=null;
+
+const fmt=x=>(parseFloat(x)||0).toLocaleString('es-ES',{maximumFractionDigits:0});
+const fmt2=x=>(parseFloat(x)||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct=x=>(parseFloat(x)||0).toFixed(1)+'%';
+const vv=id=>{const e=document.getElementById(id);return e?e.value:'';};
+const nn=id=>parseFloat(vv(id))||0;
+const setVal=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null&&v!==''){e.value=v;if(e.tagName==='INPUT')e.classList.add('ai-filled');}};
+
+function loadInv(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
+function saveInv(d){localStorage.setItem(SK,JSON.stringify(d))}
+function loadEst(){try{return JSON.parse(localStorage.getItem(EK))||[]}catch(e){return[]}}
+function saveEst(d){localStorage.setItem(EK,JSON.stringify(d))}
+function loadGastos(){try{return JSON.parse(localStorage.getItem(GK))||[]}catch(e){return[]}}
+function saveGastos(d){localStorage.setItem(GK,JSON.stringify(d))}
+
+// ── ITP POR CCAA ──────────────────────────────────────────────────────────────
+const ITP_CCAA={
+  'andalucia':7,'aragon':8,'asturias':8,'baleares':8,'canarias':6.5,'cantabria':10,
+  'castilla-la-mancha':9,'castilla-y-leon':8,'cataluna':10,'extremadura':8,
+  'galicia':10,'la-rioja':7,'madrid':6,'murcia':8,'navarra':6,'pais-vasco':7,
+  'valencia':10,'ceuta':6,'melilla':6
+};
+function getITP(ccaa){
+  if(!ccaa)return 7;
+  const k=ccaa.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-');
+  for(const[key,val] of Object.entries(ITP_CCAA)){if(k.includes(key.split('-')[0]))return val;}
+  return 7;
+}
+function detectarCCAA(direccion){
+  if(!direccion)return null;
+  const d=direccion.toLowerCase();
+  if(d.includes('madrid'))return'madrid';
+  if(d.includes('barcelona')||d.includes('catalun')||d.includes('catalu'))return'cataluna';
+  if(d.includes('valencia')||d.includes('alicante')||d.includes('castellon'))return'valencia';
+  if(d.includes('sevilla')||d.includes('malaga')||d.includes('granada')||d.includes('andaluc'))return'andalucia';
+  if(d.includes('bilbao')||d.includes('vizcaya')||d.includes('guipuzcoa')||d.includes('pais vasco'))return'pais-vasco';
+  if(d.includes('galicia')||d.includes('coruña')||d.includes('vigo')||d.includes('pontevedra'))return'galicia';
+  if(d.includes('murcia'))return'murcia';
+  if(d.includes('navarra')||d.includes('pamplona'))return'navarra';
+  if(d.includes('aragon')||d.includes('zaragoza'))return'aragon';
+  if(d.includes('cantabria')||d.includes('santander'))return'cantabria';
+  if(d.includes('asturias')||d.includes('oviedo'))return'asturias';
+  if(d.includes('baleares')||d.includes('mallorca')||d.includes('ibiza'))return'baleares';
+  if(d.includes('canarias')||d.includes('tenerife')||d.includes('gran canaria'))return'canarias';
+  if(d.includes('extremadura')||d.includes('badajoz')||d.includes('caceres'))return'extremadura';
+  if(d.includes('rioja')||d.includes('logroño'))return'la-rioja';
+  if(d.includes('castilla la mancha')||d.includes('toledo')||d.includes('albacete'))return'castilla-la-mancha';
+  if(d.includes('castilla y leon')||d.includes('leon')||d.includes('salamanca')||d.includes('valladolid')||d.includes('burgos'))return'castilla-y-leon';
+  return null;
 }
 
-Instrucciones específicas:
-- La referencia catastral tiene formato alfanumérico de 20 caracteres. Búscala en la escritura o nota simple.
-- El capital principal es la responsabilidad hipotecaria por principal, NO el total con intereses y costas.
-- La tasación para subasta es el valor pactado en escritura para caso de ejecución (art. 682 LEC).
-- Si el documento es una nota simple, extrae las cargas anteriores a la hipoteca objeto de estudio.
-- Si hay cláusulas suelo, intereses de demora elevados o vencimiento anticipado agresivo, indícalo en observaciones y pon clausulas: "pendiente".
-- Si la vivienda aparece como habitual del deudor, pon tipo: "hipotecario_primera".
-
-No incluyas nada más que el JSON. Sin explicaciones, sin markdown, sin backticks.`
-    });
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content }]
-      })
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('Anthropic error:', err);
-      return res.status(500).json({ error: 'Error calling Anthropic API' });
-    }
-
-    const data = await response.json();
-    const text = data.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '{}';
-    const clean = text.replace(/```json|```/g, '').trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(clean);
-    } catch (e) {
-      console.error('JSON parse error:', clean);
-      return res.status(500).json({ error: 'Error parsing AI response' });
-    }
-
-    return res.status(200).json(parsed);
-
-  } catch (error) {
-    console.error('Handler error:', error);
-    return res.status(500).json({ error: error.message });
+// ── CÁLCULO FISCAL ────────────────────────────────────────────────────────────
+function calcFiscal(d,gastos,cantidadObtenida){
+  const precio=d.precio||0;
+  const totalGastos=gastos.reduce((a,g)=>a+(g.importe||0),0);
+  const ccaa=detectarCCAA(d.direccion||'');
+  const itpPct=getITP(ccaa);
+  // ITP solo si no está ya en gastos
+  const yaHayITP=gastos.some(g=>g.categoria==='itp');
+  const itpImporte=yaHayITP?0:Math.round(precio*itpPct/100);
+  const totalCostes=precio+totalGastos+itpImporte;
+  const baseImponible=Math.max(0,(cantidadObtenida||0)-totalCostes);
+  // IS 25%
+  const cuotaIS=Math.round(baseImponible*0.25);
+  const beneficioIS=baseImponible-cuotaIS;
+  // IRPF escala ganancias patrimoniales 2024
+  let cuotaIRPF=0;
+  let base=baseImponible;
+  const tramos=[[6000,0.19],[44000,0.21],[150000,0.23],[100000,0.27],[Infinity,0.28]];
+  for(const[limite,tipo] of tramos){
+    const aplicable=Math.min(base,limite);if(aplicable<=0)break;
+    cuotaIRPF+=Math.round(aplicable*tipo);base-=aplicable;
   }
+  const beneficioIRPF=baseImponible-cuotaIRPF;
+  return{precio,totalGastos,itpImporte,itpPct,ccaa,totalCostes,cantidadObtenida:cantidadObtenida||0,baseImponible,cuotaIS,beneficioIS,cuotaIRPF,beneficioIRPF,yaHayITP};
 }
+
+// ── CÁLCULO OPERATIVO ─────────────────────────────────────────────────────────
+function calc(d){
+  const cap=d.capital||0,mer=d.mercado||0,car=d.cargas||0,cp=d.capex||0,mes=d.meses||12,pre=d.precio||0,tas=d.tasacion||0;
+  const vn=mer-car-cp,gb=vn-pre,roi=pre>0?(gb/pre*100):0;
+  const tir=mes>0?(Math.pow(1+roi/100,12/mes)-1)*100:0;
+  const gs=vn*0.7-pre,rs=pre>0?(gs/pre*100):0;
+  const ltv=mer>0?(cap/mer*100):0,pm=vn*0.55;
+  return{vn,gb,roi,tir,gs,rs,ltv,pm,adj:tas*0.5};
+}
+function calcNeto(d,go){
+  const c=calc(d);const tg=go.reduce((a,g)=>a+(g.importe||0),0);
+  const gn=c.vn-(d.precio||0)-tg;
+  const rn=(d.precio||0)>0?(gn/(d.precio||0)*100):0;
+  const tn=(d.meses||12)>0?(Math.pow(1+rn/100,12/(d.meses||12))-1)*100:0;
+  return{...c,totalGastos:tg,gnNeto:gn,roiNeto:rn,tirNeto:tn};
+}
+function score(d,c){
+  let s=60;
+  if(d.tipo!=='hipotecario_primera')s+=15;if(d.clausulas==='si')s+=10;if(d.vulnerabilidad==='no')s+=5;
+  if(d.epi==='bajo')s+=5;if(d.ocupacion==='vacio')s+=5;if(c.ltv<70)s+=10;if(c.ltv>90)s-=15;
+  if(d.clausulas==='pendiente')s-=20;if(d.epi==='alto')s-=10;if(c.rs<0)s-=15;
+  if(d.fase==='subasta_senalada'||d.fase==='tasacion_hecha')s+=5;
+  if(d.liquidez==='alta')s+=5;if(d.liquidez==='baja')s-=10;
+  return Math.max(0,Math.min(100,Math.round(s)));
+}
+function calcNego(d,c,sc){
+  const totalInv=(d.precio||0)+loadGastos().filter(g=>g.opRef===d.ref).reduce((a,g)=>a+(g.importe||0),0);
+  const margenMin=sc>=80?0.10:sc>=60?0.15:0.20;
+  const margenMinPct=sc>=80?10:sc>=60?15:20;
+  const sueloPorInv=totalInv>0?Math.round(totalInv*(1+margenMin)):0;
+  const precioMax=c.pm;
+  const precioMinCol=Math.round(c.vn*(0.35+(1-sc/100)*0.08));
+  const precioMin=Math.max(sueloPorInv,precioMinCol);
+  const precioOptObj=totalInv>0?Math.round(totalInv*1.20):Math.round(c.vn*0.48);
+  const precioOpt=Math.min(precioMax,Math.max(precioOptObj,Math.round(c.vn*0.45),precioMin));
+  const primeraOferta=Math.round(Math.max(precioMin*1.05,precioOpt*0.90));
+  const qMin=d.capital>0?Math.round((1-precioMin/d.capital)*100):0;
+  const qOpt=d.capital>0?Math.round((1-precioOpt/d.capital)*100):0;
+  const qMax=d.capital>0?Math.round((1-precioMax/d.capital)*100):0;
+  let est,estClass,estTxt;
+  if(sc>=80){est='Estrategia conservadora';estClass='estrat-c';estTxt='Riesgo bajo — mantente firme. Concede solo ante contrapropuesta razonable.';}
+  else if(sc>=60){est='Estrategia moderada';estClass='estrat-m';estTxt='Riesgo medio — flexible pero con límite claro. No alargues más de 30 días.';}
+  else{est='Estrategia agresiva';estClass='estrat-a';estTxt='Riesgo alto — el precio debe compensar contingencias. Resuelve riesgos antes de cerrar.';}
+  return{precioMin,precioOpt,precioMax,primeraOferta,qMin,qOpt,qMax,est,estClass,estTxt,margenMinPct,totalInv};
+}
+function rc(r){return r>=15?'#2A5E12':r>=0?'#7A4A0A':'#7A1A1A';}
+function sbadge(s){if(s>=80)return`<span class="badge bok">✓ ${s}</span>`;if(s>=60)return`<span class="badge bwarn">~ ${s}</span>`;return`<span class="badge bdanger">⚠ ${s}</span>`;}
+function ebadge(e){const m={extrajudicial:'binfo',judicial:'bwarn',dual:'bok'};const l={extrajudicial:'Extrajudicial',judicial:'Judicial',dual:'Dual'};return`<span class="badge ${m[e]||'bgray'}">${l[e]||e}</span>`;}
+function catLink(ref){if(!ref)return'';const r=ref.replace(/\s/g,'');return`<a href="https://www1.sedecatastro.gob.es/CyBE/OVCBusqueda.aspx?del=0&muni=0&RefC=${r}&ZV=NO&pest=rc" target="_blank" class="ref-cat-link">📋 ${ref}</a>`;}
+
+// ── PORTALES ──────────────────────────────────────────────────────────────────
+function portalesHTML(d){
+  const dir=d.direccion||'';
+  const partes=dir.split(',');
+  const muni=(partes.length>1?partes[partes.length-2]:partes[0]).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-');
+  const metros=d.metros||0,precio=d.mercado||0,hab=d.habitaciones||0;
+  let params=[];
+  if(metros>0)params.push(`superficie-min=${Math.round(metros*0.75)},superficie-max=${Math.round(metros*1.25)}`);
+  if(precio>0)params.push(`precio-max=${Math.round(precio*1.3)}`);
+  if(hab>0)params.push(`habitaciones-min=${hab}`);
+  const catUrl=d.refCatastral?`https://www1.sedecatastro.gob.es/CyBE/OVCBusqueda.aspx?del=0&muni=0&RefC=${d.refCatastral.replace(/\s/g,'')}&ZV=NO&pest=rc`:`https://www1.sedecatastro.gob.es/Cartografia/mapa.aspx`;
+  return`<div style="margin-top:12px"><div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">🔍 Comparables</div>
+  <div class="portales-grid">
+    <a href="https://www.idealista.com/venta-viviendas/${muni}/${params.length?'con-'+params.join(',')+'/':''}" target="_blank" class="portal-btn pi">🏠 Idealista</a>
+    <a href="https://www.fotocasa.es/es/comprar/viviendas/${muni.replace(/-/g,'_')}/todas-las-zonas/l" target="_blank" class="portal-btn pf">📷 Fotocasa</a>
+    <a href="https://www.habitaclia.com/comprar-pisos-en-${muni}.htm" target="_blank" class="portal-btn ph2">🏘 Habitaclia</a>
+    <a href="https://www.pisos.com/pisos/${muni}-venta/" target="_blank" class="portal-btn pp">🏡 Pisos.com</a>
+    <a href="https://www.kyero.com/es/propiedades/espana/${muni}" target="_blank" class="portal-btn pk">🌍 Kyero</a>
+    <a href="${catUrl}" target="_blank" class="portal-btn pc">${d.refCatastral?'📋 Catastro ✓':'📋 Catastro'}</a>
+  </div></div>`;
+}
+
+// ── MAPA ──────────────────────────────────────────────────────────────────────
+async function geocodificar(addr,mapId){
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&countrycodes=es&limit=1`);
+    const data=await r.json();
+    if(!data.length)return;
+    const lat=parseFloat(data[0].lat),lng=parseFloat(data[0].lon);
+    setTimeout(()=>{
+      if(mapInst){mapInst.remove();mapInst=null;}
+      const el=document.getElementById(mapId);if(!el)return;
+      mapInst=L.map(mapId).setView([lat,lng],15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(mapInst);
+      L.marker([lat,lng]).addTo(mapInst).bindPopup(addr).openPopup();
+      setTimeout(()=>mapInst&&mapInst.invalidateSize(),400);
+    },300);
+  }catch(e){}
+}
+
+// ── FORMULARIO ────────────────────────────────────────────────────────────────
+function formHTML(tipo){
+  const esInv=tipo==='inversion';
+  return`<div class="g2" style="gap:12px;align-items:start">
+  <div>
+    <div class="panel" style="border:1px solid #9DCAF0;background:#F7FBFF">
+      <div class="phead" style="border-bottom-color:#D0E8F8"><span class="ptitle" style="color:#185FA5">📎 Documentos</span><span id="f-docs-badge" style="display:none" class="badge bok"></span></div>
+      <div class="drop-zone" id="f-drop" onclick="document.getElementById('f-file').click()" ondragover="dOver(event,'f-drop')" ondragleave="dLeave('f-drop')" ondrop="dDrop(event,'f-drop')">
+        <div style="font-size:26px;margin-bottom:7px">📂</div>
+        <div style="font-size:13px;font-weight:600;color:#0F3D6E;margin-bottom:2px">Arrastra o haz clic</div>
+        <div style="font-size:11px;color:#6B8FAA">Escritura · Nota simple · Auto · Tasación</div>
+      </div>
+      <input type="file" id="f-file" accept=".pdf,image/*" style="display:none" onchange="handleFile(this.files[0])">
+      <div id="f-chips"></div>
+      <div id="f-ext-banner" style="display:none" class="extract-banner">
+        <span style="font-size:16px">✨</span>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600;color:#0F3D6E">Extraer con IA</div><div style="font-size:11px;color:#4A7A9B">Dirección, ref. catastral, m², capital, tasación...</div></div>
+        <button class="btn btn-blue btn-sm" id="f-btn-ext" onclick="extraerDatos()">✨ Extraer</button>
+      </div>
+      <div id="f-ext-status" style="display:none;font-size:12px;padding:5px 0;text-align:center"></div>
+    </div>
+    <div class="panel">
+      <div class="phead"><span class="ptitle">📋 Crédito</span><span id="f-filled" style="display:none;background:#EBF7E2;color:#2A5E12;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600">✨ IA</span></div>
+      <div class="field"><label>Referencia</label><input type="text" id="f-ref" placeholder="APT-MALAGA-001"></div>
+      <div class="g2">
+        <div class="field"><label>Tipo crédito</label><select id="f-tipo"><option value="hipotecario_segunda">Hipotecario 2ª vivienda</option><option value="hipotecario_primera">Hipotecario 1ª vivienda</option><option value="ordinario">Ordinario</option></select></div>
+        <div class="field"><label>Estrategia</label><select id="f-est"><option value="extrajudicial">Extrajudicial</option><option value="judicial">Judicial</option><option value="dual">Dual</option></select></div>
+      </div>
+      <div class="g3">
+        <div class="field"><label>Capital (€)</label><input type="number" id="f-cap" placeholder="150000"></div>
+        <div class="field"><label>Intereses ord. (€)</label><input type="number" id="f-int" placeholder="12000"></div>
+        <div class="field"><label>${esInv?'Precio compra (€)':'Precio estimado (€)'}</label><input type="number" id="f-pre" placeholder="90000"></div>
+      </div>
+      <div class="g2">
+        <div class="field"><label>Fase procesal</label><select id="f-fase"><option value="prejudicial">Prejudicial</option><option value="monitorio">Monitorio</option><option value="ejecucion_admitida">Ejecución admitida</option><option value="tasacion_hecha">Tasación judicial</option><option value="subasta_senalada">Subasta señalada</option></select></div>
+        <div class="field"><label>Último pago</label><input type="date" id="f-fecha"></div>
+      </div>
+      <div class="g3">
+        <div class="field"><label>Cláusulas</label><select id="f-cla"><option value="si">Resueltas</option><option value="no_revisadas">Sin revisar</option><option value="pendiente">Pendiente</option></select></div>
+        <div class="field"><label>Vulnerabilidad</label><select id="f-vul"><option value="no">No</option><option value="riesgo">Riesgo</option><option value="si">Declarada</option></select></div>
+        <div class="field"><label>EPI</label><select id="f-epi"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="phead"><span class="ptitle">🏢 Inmueble</span></div>
+      <div class="field"><label>Dirección</label><div class="addr-wrap"><input type="text" id="f-dir" placeholder="Calle Mayor 10, Madrid" oninput="buscarDir()" autocomplete="off"><div id="f-addr-sug" class="addr-suggestions" style="display:none"></div></div></div>
+      <div class="field"><label>Referencia catastral</label><input type="text" id="f-refcat" placeholder="1234567AB1234A0001AB" oninput="prevRefCat()"></div>
+      <div id="f-refcat-prev" style="margin-bottom:8px"></div>
+      <div class="g2">
+        <div class="field"><label>Tipo</label><select id="f-tipoInm"><option value="piso">Piso</option><option value="atico">Ático</option><option value="bajo">Bajo</option><option value="bajo_jardin">Bajo con jardín</option><option value="local">Local comercial</option><option value="chalet">Chalet</option><option value="solar">Solar</option></select></div>
+        <div class="field"><label>m²</label><input type="number" id="f-metros" placeholder="90"></div>
+      </div>
+      <div class="g3">
+        <div class="field"><label>Planta</label><input type="text" id="f-planta" placeholder="3º"></div>
+        <div class="field"><label>Habitaciones</label><input type="number" id="f-hab" placeholder="3"></div>
+        <div class="field"><label>Baños</label><input type="number" id="f-banos" placeholder="1"></div>
+      </div>
+      <div class="g2">
+        <div class="field"><label>Tasación escrituraria (€)</label><input type="number" id="f-tas" placeholder="200000"></div>
+        <div class="field"><label>Valor mercado (€)</label><input type="number" id="f-mer" placeholder="180000"></div>
+      </div>
+      <div class="g3">
+        <div class="field"><label>Cargas anteriores (€)</label><input type="number" id="f-car" placeholder="0"></div>
+        <div class="field"><label>Capex reforma (€)</label><input type="number" id="f-cap2" placeholder="0"></div>
+        <div class="field"><label>Meses hasta venta</label><input type="number" id="f-mes" placeholder="12"></div>
+      </div>
+      <div class="g2">
+        <div class="field"><label>Liquidez zona</label><select id="f-liq"><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option></select></div>
+        <div class="field"><label>Ocupación</label><select id="f-ocu"><option value="vacio">Vacío</option><option value="deudor">Deudor</option><option value="arrendado_posterior">Arrendado (post.)</option><option value="arrendado_anterior">Arrendado (ant.)</option><option value="tercero">Tercero</option></select></div>
+      </div>
+      <div class="field"><label>Observaciones</label><textarea id="f-obs" placeholder="Negociación, estado inmueble, deudor..."></textarea></div>
+    </div>
+    <div style="display:flex;gap:8px"><button class="btn ${esInv?'btn-dark':'btn-amber'}" style="flex:1" onclick="guardarOp('${tipo}')">💾 Guardar y analizar</button><button class="btn btn-out" onclick="limpiarForm()">↺</button></div>
+  </div>
+  <div>
+    <div id="f-placeholder" class="panel" style="text-align:center;padding:44px 16px">
+      <div style="font-size:44px;margin-bottom:14px;opacity:.3">${esInv?'💼':'🔍'}</div>
+      <div style="font-size:14px;font-weight:600;color:#0A1628;margin-bottom:6px">Introduce los datos</div>
+      <div style="font-size:12px;color:#8A9BB0;line-height:1.6">El análisis completo aparecerá aquí</div>
+    </div>
+    <div id="f-resultado" style="display:none">
+      <div class="panel"><div class="phead"><span class="ptitle">📊 Análisis</span></div><div id="f-fin"></div></div>
+      <div class="panel"><div class="phead"><span class="ptitle">🤝 Negociación</span></div><div id="f-nego"></div></div>
+      <div class="panel"><div class="phead"><span class="ptitle">🧠 Dictamen</span><button class="btn btn-out btn-xs" onclick="exportarUltimo()">⬇</button></div><div class="aiarea" id="f-dictamen"></div></div>
+    </div>
+  </div></div>`;
+}
+
+// ── DOCUMENTOS ────────────────────────────────────────────────────────────────
+function dOver(e,id){e.preventDefault();document.getElementById(id)?.classList.add('over');}
+function dLeave(id){document.getElementById(id)?.classList.remove('over');}
+function dDrop(e,id){e.preventDefault();document.getElementById(id)?.classList.remove('over');const f=e.dataTransfer.files[0];if(f)processFile(f);}
+function handleFile(f){if(f)processFile(f);}
+function processFile(f){
+  if(f.size>10*1024*1024){alert('Máximo 10 MB');return;}
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    curDocs.push({nombre:f.name,b64:ev.target.result.split(',')[1],mime:f.type||'application/pdf',size:f.size});
+    renderChips();
+    document.getElementById('f-ext-banner').style.display='flex';
+    document.getElementById('f-docs-badge').style.display='inline-flex';
+    document.getElementById('f-docs-badge').textContent=`${curDocs.length} doc${curDocs.length>1?'s':''}`;
+    document.getElementById('f-drop').innerHTML=`<div style="font-size:22px;margin-bottom:5px">➕</div><div style="font-size:12px;font-weight:600;color:#0F3D6E">Añadir otro</div>`;
+    document.getElementById('f-file').value='';
+  };
+  rd.readAsDataURL(f);
+}
+function renderChips(){
+  document.getElementById('f-chips').innerHTML=curDocs.map((d,i)=>`<div class="doc-chip"><span>📄</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#2A5E12;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.nombre}</div><div style="font-size:10px;color:#5A9A3A">${(d.size/1024).toFixed(0)} KB</div></div><button onclick="removeDoc(${i})" style="background:none;border:none;cursor:pointer;color:#5A9A3A;font-size:14px">✕</button></div>`).join('');
+}
+function removeDoc(i){curDocs.splice(i,1);renderChips();if(!curDocs.length){document.getElementById('f-ext-banner').style.display='none';document.getElementById('f-docs-badge').style.display='none';document.getElementById('f-drop').innerHTML=`<div style="font-size:26px;margin-bottom:7px">📂</div><div style="font-size:13px;font-weight:600;color:#0F3D6E;margin-bottom:2px">Arrastra o haz clic</div><div style="font-size:11px;color:#6B8FAA">Escritura · Nota simple · Auto · Tasación</div>`;}}
+
+async function extraerDatos(){
+  if(!curDocs.length)return;
+  document.getElementById('f-btn-ext').disabled=true;
+  document.getElementById('f-ext-status').style.display='block';
+  document.getElementById('f-ext-status').style.color='#185FA5';
+  document.getElementById('f-ext-status').textContent='⏳ Analizando documentos...';
+  try{
+    const body=new FormData();
+    curDocs.forEach((d,i)=>body.append(`doc_${i}`,JSON.stringify({b64:d.b64,mime:d.mime})));
+    body.append('count',curDocs.length);
+    const r=await fetch('/api/extract',{method:'POST',body});
+    if(!r.ok)throw new Error();
+    const data=await r.json();
+    const mapa={capital:'f-cap',intereses:'f-int',tasacion:'f-tas',mercado:'f-mer',metros:'f-metros',habitaciones:'f-hab',planta:'f-planta',banos:'f-banos'};
+    Object.entries(mapa).forEach(([k,id])=>{if(data[k])setVal(id,data[k]);});
+    if(data.cargas_anteriores)setVal('f-car',data.cargas_anteriores);
+    if(data.refCatastral){setVal('f-refcat',data.refCatastral);prevRefCat();}
+    if(data.direccion)setVal('f-dir',data.direccion);
+    if(data.tipo)document.getElementById('f-tipo').value=data.tipo;
+    if(data.tipo_inmueble)document.getElementById('f-tipoInm').value=data.tipo_inmueble;
+    if(data.fase)document.getElementById('f-fase').value=data.fase;
+    if(data.clausulas)document.getElementById('f-cla').value=data.clausulas;
+    if(data.observaciones)setVal('f-obs',data.observaciones);
+    document.getElementById('f-filled').style.display='inline-flex';
+    document.getElementById('f-ext-banner').style.display='none';
+    document.getElementById('f-ext-status').style.color='#2A6E14';
+    document.getElementById('f-ext-status').textContent='✓ Datos extraídos — revisa los campos en verde';
+  }catch(e){
+    document.getElementById('f-ext-status').style.color='#7A4A0A';
+    document.getElementById('f-ext-status').textContent='⚠ API no configurada. Introduce los datos manualmente.';
+  }
+  document.getElementById('f-btn-ext').disabled=false;
+}
+
+function prevRefCat(){
+  const ref=vv('f-refcat');
+  const el=document.getElementById('f-refcat-prev');
+  if(el)el.innerHTML=ref?catLink(ref):'';
+}
+
+async function buscarDir(){
+  const q=vv('f-dir');
+  if(q.length<5){document.getElementById('f-addr-sug').style.display='none';return;}
+  clearTimeout(addrTimer);
+  addrTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=es&limit=5`);
+      const data=await r.json();
+      const sug=document.getElementById('f-addr-sug');
+      if(!data.length){sug.style.display='none';return;}
+      sug.innerHTML=data.map((d,i)=>`<div class="addr-sug" onclick="selDir(${i})" data-d="${encodeURIComponent(d.display_name)}">${d.display_name}</div>`).join('');
+      sug.style.display='block';
+    }catch(e){}
+  },400);
+}
+function selDir(i){
+  const items=document.querySelectorAll('#f-addr-sug .addr-sug');
+  const item=items[i];
+  document.getElementById('f-dir').value=decodeURIComponent(item.dataset.d);
+  document.getElementById('f-addr-sug').style.display='none';
+}
+document.addEventListener('click',e=>{const s=document.getElementById('f-addr-sug');if(s&&!e.target.closest('.addr-wrap'))s.style.display='none';});
+
+// ── GUARDAR ───────────────────────────────────────────────────────────────────
+function guardarOp(tipo){
+  const ref=vv('f-ref');if(!ref){alert('Introduce una referencia');return;}
+  const capital=nn('f-cap');if(!capital){alert('Introduce el capital pendiente');return;}
+  const d={id:Date.now().toString(),ref,tipo:vv('f-tipo'),capital,intereses:nn('f-int'),fecha_pago:vv('f-fecha'),fase:vv('f-fase'),estrategia:vv('f-est'),clausulas:vv('f-cla'),vulnerabilidad:vv('f-vul'),epi:vv('f-epi'),precio:nn('f-pre'),tasacion:nn('f-tas'),mercado:nn('f-mer'),cargas:nn('f-car'),capex:nn('f-cap2'),meses:nn('f-mes')||12,liquidez:vv('f-liq'),ocupacion:vv('f-ocu'),obs:vv('f-obs'),direccion:vv('f-dir'),refCatastral:vv('f-refcat'),tipo_inmueble:vv('f-tipoInm'),metros:nn('f-metros'),habitaciones:nn('f-hab'),banos:nn('f-banos'),planta:vv('f-planta'),fecha:new Date().toISOString(),docs:curDocs.map(x=>x.nombre),tipoOp:tipo,finalizada:false};
+  const c=calc(d);const sc=score(d,c);d.score=sc;
+  document.getElementById('f-placeholder').style.display='none';
+  document.getElementById('f-resultado').style.display='block';
+  const verd=sc>=80?'Recomendada':sc>=60?'Viable':'Alto riesgo';
+  const vc=sc>=80?'#2A5E12':sc>=60?'#7A4A0A':'#7A1A1A';
+  const vbg=sc>=80?'#EBF7E2':sc>=60?'#FEF3E2':'#FEECEC';
+  document.getElementById('f-fin').innerHTML=`
+    <div class="rhead" style="background:${vbg}"><div><div style="font-size:15px;font-weight:700;color:${vc}">${verd} · ${sc}/100</div>${d.refCatastral?`<div style="margin-top:5px">${catLink(d.refCatastral)}</div>`:''}</div><div style="text-align:right"><div style="font-size:10px;color:${vc};opacity:.7;text-transform:uppercase">TIR</div><div style="font-size:21px;font-weight:700;color:${vc}">${pct(c.tir)}</div></div></div>
+    <div class="strk"><div class="sfil" style="width:${sc}%;background:${vc}"></div></div>
+    <div class="g3" style="gap:7px;margin-top:10px">
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(c.roi)}">${pct(c.roi)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">ROI bruto</div></div>
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(c.rs)}">${pct(c.rs)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">ROI estrés</div></div>
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700">${pct(c.ltv)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">LTV</div></div>
+    </div>
+    <div style="margin-top:7px;padding:9px 13px;background:#F7F9FC;border-radius:7px;display:flex;justify-content:space-between"><div style="font-size:10px;color:#8A9BB0;text-transform:uppercase">Valor neto realizable</div><div style="font-size:14px;font-weight:700">€${fmt(c.vn)}</div></div>
+    ${d.metros?`<div style="margin-top:5px;padding:9px 13px;background:#F7F9FC;border-radius:7px;display:flex;justify-content:space-between"><div style="font-size:10px;color:#8A9BB0;text-transform:uppercase">€/m²</div><div style="font-size:14px;font-weight:700">€${fmt(d.mercado/d.metros)}/m²</div></div>`:''}
+    ${portalesHTML(d)}`;
+  renderNego(d,c,sc,'f-nego');
+  const dict=generarDictamen(d,c,sc);
+  document.getElementById('f-dictamen').textContent=dict;
+  d.ai_dictamen=dict;
+  if(tipo==='inversion'){const inv=loadInv();inv.push(d);saveInv(inv);}
+  else{const est=loadEst();est.push(d);saveEst(est);}
+  updatePill();
+}
+
+// ── RENDER NEGOCIACIÓN ────────────────────────────────────────────────────────
+function renderNego(d,c,sc,cid){
+  const n=calcNego(d,c,sc);
+  const obs=(d.obs||'').toLowerCase();
+  let analObs=`Rango: €${fmt(n.precioMin)}–€${fmt(n.precioMax)}. Primera oferta: €${fmt(n.primeraOferta)}.`;
+  const m=obs.match(/(\d[\d.,]+)/);
+  if(m){const pb=parseFloat(m[1].replace(',',''));if(pb>1000){
+    if(pb>n.precioMax)analObs=`Precio solicitado (~€${fmt(pb)}) supera tu máximo (€${fmt(n.precioMax)}). Contraoferta: €${fmt(n.primeraOferta)}.`;
+    else if(pb>n.precioOpt)analObs=`Precio solicitado (~€${fmt(pb)}) por encima del óptimo. Abre con €${fmt(n.primeraOferta)}.`;
+    else analObs=`Precio solicitado (~€${fmt(pb)}) aceptable. Intenta bajar a €${fmt(n.primeraOferta)}.`;
+  }}
+  document.getElementById(cid).innerHTML=`
+    <div class="nego-range">
+      <div class="nego-box nego-min"><div class="nego-val" style="color:#7A1A1A">€${fmt(n.precioMin)}</div><div class="nego-lbl" style="color:#7A1A1A">Mínimo</div><div class="nego-sub" style="color:#7A1A1A">Quita ${n.qMin}% · +${n.margenMinPct}% sobre inversión<br>No ceder por debajo</div></div>
+      <div class="nego-box nego-opt"><div class="nego-val" style="color:#2A5E12">€${fmt(n.precioOpt)}</div><div class="nego-lbl" style="color:#2A5E12">Óptimo</div><div class="nego-sub" style="color:#2A5E12">Quita ${n.qOpt}% · ROI ~20%<br>Objetivo de cierre</div></div>
+      <div class="nego-box nego-max"><div class="nego-val" style="color:#7A4A0A">€${fmt(n.precioMax)}</div><div class="nego-lbl" style="color:#7A4A0A">Máximo</div><div class="nego-sub" style="color:#7A4A0A">Quita ${n.qMax}% · Límite absoluto<br>55% valor neto</div></div>
+    </div>
+    <div style="background:#E4F0FC;border:0.5px solid #9DCAF0;border-radius:9px;padding:11px 13px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:10px;font-weight:700;color:#0F3D6E;text-transform:uppercase;letter-spacing:.06em">Primera oferta</div><div style="font-size:11px;color:#185FA5;margin-top:1px">Inversión total: €${fmt(n.totalInv)} · Margen mínimo: +${n.margenMinPct}%</div></div>
+      <div style="font-size:21px;font-weight:700;color:#185FA5">€${fmt(n.primeraOferta)}</div>
+    </div>
+    <div class="estrategia-box ${n.estClass}"><div style="font-size:12px;font-weight:700;margin-bottom:3px">${n.est}</div><div style="font-size:12px;line-height:1.6">${n.estTxt}</div></div>
+    ${obs?`<div style="background:#F7F9FC;border:0.5px solid #DDE3EC;border-radius:8px;padding:11px 13px;margin-top:8px"><div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Tu situación</div><div style="font-size:12px;color:#0A1628;line-height:1.7">${analObs}</div></div>`:''}
+    <div style="margin-top:11px"><div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Factores de riesgo</div>
+    <div class="riesgo-grid">
+      ${ri(d.tipo==='hipotecario_segunda','2ª vivienda — sin riesgo vulnerabilidad','1ª vivienda — vulnerabilidad posible')}
+      ${ri(d.clausulas==='si','Cláusulas resueltas',d.clausulas==='pendiente'?'Cláusulas pendientes':'Sin revisar')}
+      ${ri(d.epi==='bajo','EPI bajo',d.epi==='alto'?'EPI alto — riesgo quita':'EPI medio')}
+      ${ri(c.ltv<70,`LTV ${pct(c.ltv)} — OK`,`LTV ${pct(c.ltv)} — alto`)}
+      ${ri(d.ocupacion==='vacio','Vacío','Ocupado — coste adicional')}
+      ${ri(d.fase==='subasta_senalada'||d.fase==='tasacion_hecha','Fase avanzada','Fase inicial')}
+    </div></div>`;
+}
+function ri(ok,a,b){const c=ok?'r-ok':'r-warn';return`<div class="riesgo-item ${c}"><span style="font-size:13px">${ok?'✓':'⚠'}</span><span>${ok?a:b}</span></div>`;}
+
+function generarDictamen(d,c,sc){
+  const verd=sc>=80?'RECOMENDADA':sc>=60?'VIABLE CON CAUTELAS':'ALTO RIESGO';
+  let r=[];
+  if(d.tipo==='hipotecario_primera'&&d.vulnerabilidad!=='no')r.push('• Riesgo suspensión lanzamiento (Ley 12/2023)');
+  if(d.clausulas==='pendiente')r.push('• Abusividad pendiente — NO adquirir hasta resolución');
+  if(d.clausulas==='no_revisadas')r.push('• Cláusulas sin revisar — análisis previo obligatorio');
+  if(d.epi==='alto')r.push('• EPI alto — riesgo quita judicial (art. 497 TRLC)');
+  if(c.ltv>90)r.push(`• LTV ${pct(c.ltv)} — colchón insuficiente`);
+  if(c.rs<0)r.push(`• ROI estrés negativo (${pct(c.rs)})`);
+  if(!r.length)r.push('• Sin riesgos críticos identificados');
+  const n=calcNego(d,c,sc);
+  let p=[];
+  if(d.estrategia!=='judicial')p.push(`1. Primera oferta: €${fmt(n.primeraOferta)} — ceder hasta €${fmt(n.precioOpt)}`);
+  p.push(`2. Precio máximo absoluto: €${fmt(n.precioMax)}`);
+  p.push('3. Notificar cesión al deudor y al juzgado (art. 16 LEC)');
+  if(d.clausulas==='no_revisadas')p.push('4. Revisar cláusulas abusivas antes del cierre');
+  return `DICTAMEN: ${d.ref}\n${'─'.repeat(34)}\nVALORACIÓN: ${verd} (${sc}/100)\n${d.direccion?`INMUEBLE: ${d.direccion}\n`:''}${d.refCatastral?`REF. CATASTRAL: ${d.refCatastral}\n`:''}\n1. RIESGOS\n${r.join('\n')}\n\n2. NEGOCIACIÓN\nPrimera oferta: €${fmt(n.primeraOferta)}\nÓptimo: €${fmt(n.precioOpt)} | Máximo: €${fmt(n.precioMax)}\n\n3. PASOS\n${p.join('\n')}\n${'─'.repeat(34)}`;
+}
+
+// ── RENDER FICHA FISCAL ───────────────────────────────────────────────────────
+function renderFiscal(d,gastos,containerId){
+  const cantObtenida=d.cantidadObtenida||0;
+  if(!d.finalizada||!cantObtenida){
+    document.getElementById(containerId).innerHTML=`
+      <div class="finalizar-banner">
+        <div style="font-size:10px;font-weight:600;color:#6B21A8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">💰 Registrar cantidad obtenida y cerrar operación</div>
+        <div class="g2" style="gap:8px;margin-bottom:10px">
+          <div class="field"><label>Tipo de cobro</label><select id="fin-tipocobro"><option value="venta">Venta del inmueble</option><option value="cobro_deudor">Cobro al deudor</option><option value="mixto">Mixto (venta + cobro)</option></select></div>
+          <div class="field"><label>Cantidad total obtenida (€)</label><input type="number" id="fin-cantidad" placeholder="150000"></div>
+        </div>
+        <div class="g2" style="gap:8px;margin-bottom:10px">
+          <div class="field"><label>Figura fiscal</label><select id="fin-figura"><option value="ambos">IS y IRPF (comparativa)</option><option value="is">IS — Impuesto de Sociedades</option><option value="irpf">IRPF — Persona física</option></select></div>
+          <div class="field"><label>Fecha de cierre</label><input type="date" id="fin-fecha" value="${new Date().toISOString().split('T')[0]}"></div>
+        </div>
+        <button class="btn btn-purple btn-sm" style="width:100%" onclick="finalizarOp('${d.id}','${d.tipoOp||'inversion'}')">✅ Finalizar operación y calcular resultado fiscal</button>
+      </div>`;
+    return;
+  }
+  const f=calcFiscal(d,gastos,cantObtenida);
+  const ccaaLabel=f.ccaa?f.ccaa.replace(/-/g,' ').replace(/\b\w/g,l=>l.toUpperCase()):'Genérica';
+  document.getElementById(containerId).innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:11px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">IS — Impuesto de Sociedades (25%)</div>
+      <div class="fiscal-box">
+        <div class="fiscal-row"><span style="color:#8A9BB0">Cantidad obtenida</span><span class="tb">€${fmt(f.cantidadObtenida)}</span></div>
+        <div class="fiscal-row"><span style="color:#8A9BB0">Precio de compra</span><span style="color:#7A1A1A">− €${fmt(f.precio)}</span></div>
+        ${!f.yaHayITP?`<div class="fiscal-row"><span style="color:#8A9BB0">ITP (${f.itpPct}% · ${ccaaLabel})</span><span style="color:#7A1A1A">− €${fmt(f.itpImporte)}</span></div>`:''}
+        <div class="fiscal-row"><span style="color:#8A9BB0">Otros gastos</span><span style="color:#7A1A1A">− €${fmt(f.totalGastos)}</span></div>
+        <div class="fiscal-row total"><span>Base imponible</span><span>€${fmt(f.baseImponible)}</span></div>
+        <div class="fiscal-row impuesto"><span>Cuota IS (25%)</span><span style="color:#7A4A0A">− €${fmt(f.cuotaIS)}</span></div>
+        <div class="fiscal-row beneficio"><span>✅ Beneficio neto IS</span><span style="color:${f.beneficioIS>=0?'#2A5E12':'#7A1A1A'}">€${fmt(f.beneficioIS)}</span></div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">IRPF — Persona física (escala 2024)</div>
+      <div class="fiscal-box">
+        <div class="fiscal-row"><span style="color:#8A9BB0">Cantidad obtenida</span><span class="tb">€${fmt(f.cantidadObtenida)}</span></div>
+        <div class="fiscal-row"><span style="color:#8A9BB0">Precio de compra</span><span style="color:#7A1A1A">− €${fmt(f.precio)}</span></div>
+        ${!f.yaHayITP?`<div class="fiscal-row"><span style="color:#8A9BB0">ITP (${f.itpPct}% · ${ccaaLabel})</span><span style="color:#7A1A1A">− €${fmt(f.itpImporte)}</span></div>`:''}
+        <div class="fiscal-row"><span style="color:#8A9BB0">Otros gastos</span><span style="color:#7A1A1A">− €${fmt(f.totalGastos)}</span></div>
+        <div class="fiscal-row total"><span>Base imponible</span><span>€${fmt(f.baseImponible)}</span></div>
+        <div class="fiscal-row impuesto"><span>Cuota IRPF (progresiva)</span><span style="color:#7A4A0A">− €${fmt(f.cuotaIRPF)}</span></div>
+        <div class="fiscal-row beneficio"><span>✅ Beneficio neto IRPF</span><span style="color:${f.beneficioIRPF>=0?'#2A5E12':'#7A1A1A'}">€${fmt(f.beneficioIRPF)}</span></div>
+      </div>
+    </div>
+    </div>
+    <div style="margin-top:12px;padding:10px 13px;background:#F7F9FC;border-radius:8px;font-size:12px;color:#6B7E96">
+      ITP calculado automáticamente para <strong>${ccaaLabel}</strong> (${f.itpPct}%). ${f.yaHayITP?'Ya incluido en gastos registrados.':'Añadido a costes deducibles.'} · Tipo de cobro: <strong>${d.tipoCobro||'—'}</strong>
+    </div>`;
+}
+
+// ── FICHA MODAL ───────────────────────────────────────────────────────────────
+function abrirFicha(id,col){
+  const lista=col==='inversion'?loadInv():loadEst();
+  const d=lista.find(o=>o.id===id);if(!d)return;
+  const gastos=loadGastos().filter(g=>g.opRef===d.ref);
+  const c=calc(d);const sc=d.score||score(d,c);const cn=calcNeto(d,gastos);
+  const esInv=col==='inversion';
+  document.getElementById('ficha-title').textContent=`${d.ref}${d.direccion?' · '+d.direccion.split(',')[0]:''}${d.finalizada?' ✅':''}`;
+
+  const tabsData=esInv
+    ?[['resumen','📊'],['fiscal','💰 Fiscal'],['negociacion','🤝'],['inmueble','🗺'],['gastos','🧾'],['dictamen','🧠']]
+    :[['resumen','📊'],['negociacion','🤝'],['inmueble','🗺'],['dictamen','🧠']];
+  document.getElementById('ficha-tabs').innerHTML=tabsData.map((t,i)=>`<div class="modal-tab ${i===0?'active':''}" onclick="switchTab('${t[0]}',this)">${t[1]}</div>`).join('');
+
+  const verd=sc>=80?'Recomendada':sc>=60?'Viable':'Alto riesgo';
+  const vc=sc>=80?'#2A5E12':sc>=60?'#7A4A0A':'#7A1A1A';
+  const vbg=sc>=80?'#EBF7E2':sc>=60?'#FEF3E2':'#FEECEC';
+
+  // RESUMEN
+  document.getElementById('ft-resumen').innerHTML=`
+    ${!esInv?`<div class="convertir-banner"><div style="font-size:22px">🚀</div><div style="flex:1"><div style="font-size:13px;font-weight:700;color:#2A5E12">¿Operación confirmada?</div><div style="font-size:11px;color:#3A7A20;margin-top:1px">Conviértela en inversión para actualizar el capital del dashboard</div></div><button class="btn btn-green btn-sm" onclick="convertirAInversion('${id}')">✅ Confirmar inversión</button></div>`:''}
+    ${d.finalizada?`<div style="background:#EBF7E2;border:1px solid #B2D98A;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">✅</div><div><div style="font-size:13px;font-weight:700;color:#2A5E12">Operación finalizada</div><div style="font-size:11px;color:#3A7A20">Cantidad obtenida: €${fmt(d.cantidadObtenida)} · ${d.fechaCierre?new Date(d.fechaCierre).toLocaleDateString('es-ES'):''}</div></div></div>`:''}
+    <div class="rhead" style="background:${vbg};margin-bottom:10px"><div><div style="font-size:15px;font-weight:700;color:${vc}">${verd} · ${sc}/100</div><div style="font-size:11px;color:${vc};margin-top:2px">${d.estrategia} · ${d.tipo}${d.refCatastral?` · `+catLink(d.refCatastral):''}</div></div><div style="text-align:right"><div style="font-size:10px;color:${vc};opacity:.7;text-transform:uppercase">TIR ${esInv?'neta':'est.'}</div><div style="font-size:21px;font-weight:700;color:${vc}">${pct(esInv?cn.tirNeto:c.tir)}</div></div></div>
+    <div class="g3" style="gap:7px;margin-bottom:10px">
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(esInv?cn.roiNeto:c.roi)}">${pct(esInv?cn.roiNeto:c.roi)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">${esInv?'ROI neto':'ROI bruto'}</div></div>
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(c.rs)}">${pct(c.rs)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">ROI estrés</div></div>
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700">${pct(c.ltv)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">LTV</div></div>
+    </div>
+    <table class="dtable">
+      <tr><td style="color:#8A9BB0">Capital nominal</td><td class="tr tb">€${fmt(d.capital)}</td></tr>
+      <tr><td style="color:#8A9BB0">${esInv?'Precio de compra':'Precio estimado'}</td><td class="tr tb">€${fmt(d.precio)}</td></tr>
+      <tr><td style="color:#8A9BB0">Tasación escrituraria</td><td class="tr">€${fmt(d.tasacion)}</td></tr>
+      <tr><td style="color:#8A9BB0">Valor mercado</td><td class="tr">€${fmt(d.mercado)}</td></tr>
+      <tr><td style="color:#8A9BB0">Valor neto realizable</td><td class="tr">€${fmt(cn.vn)}</td></tr>
+      ${esInv?`<tr><td style="color:#8A9BB0">Gastos registrados</td><td class="tr" style="color:#7A4A0A">€${fmt(cn.totalGastos)}</td></tr><tr><td style="color:#8A9BB0">Coste total (precio+gastos)</td><td class="tr tb">€${fmt((d.precio||0)+cn.totalGastos)}</td></tr>`:''}
+      ${d.metros?`<tr><td style="color:#8A9BB0">€/m²</td><td class="tr">€${fmt(d.mercado/d.metros)}/m²</td></tr>`:''}
+    </table>
+    ${d.obs?`<div style="margin-top:10px;padding:9px 12px;background:#F7F9FC;border-radius:7px;font-size:12px;color:#4A5568;line-height:1.6"><strong>Obs:</strong> ${d.obs}</div>`:''}`;
+
+  // FISCAL
+  if(esInv){
+    document.getElementById('ft-fiscal').innerHTML='<div id="ft-fiscal-inner"></div>';
+    renderFiscal(d,gastos,'ft-fiscal-inner');
+  }
+
+  // NEGOCIACIÓN
+  document.getElementById('ft-negociacion').innerHTML='<div id="ft-nego-inner"></div>';
+  renderNego(d,c,sc,'ft-nego-inner');
+
+  // INMUEBLE
+  document.getElementById('ft-inmueble').innerHTML=`
+    <div style="margin-bottom:10px">
+      ${d.direccion?`<div style="font-size:14px;font-weight:600;margin-bottom:5px">📍 ${d.direccion}</div>`:''}
+      ${d.refCatastral?`<div style="margin-bottom:7px">${catLink(d.refCatastral)}</div>`:''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${d.tipo_inmueble?`<span class="badge bgray">${d.tipo_inmueble}</span>`:''}
+        ${d.metros?`<span class="badge bgray">${d.metros} m²</span>`:''}
+        ${d.planta?`<span class="badge bgray">Planta ${d.planta}</span>`:''}
+        ${d.habitaciones?`<span class="badge bgray">${d.habitaciones} hab.</span>`:''}
+        ${d.banos?`<span class="badge bgray">${d.banos} baños</span>`:''}
+      </div>
+    </div>
+    ${d.direccion?`<div id="ficha-map-el" style="height:220px;border-radius:10px;border:0.5px solid #DDE3EC;"></div>`:'<div class="empty">Sin dirección</div>'}
+    ${portalesHTML(d)}`;
+  if(d.direccion)geocodificar(d.direccion,'ficha-map-el');
+
+  // GASTOS
+  if(esInv){
+    const CAT={notaria:'Notaría',registro:'Registro',gestoria:'Gestoría',abogado:'Abogado',procurador:'Procurador',tasacion:'Tasación',itp:'ITP/AJD',plusvalia:'Plusvalía',ibi:'IBI',nota_simple:'Nota simple',due_diligence:'Due diligence',subasta:'Subasta',reforma:'Reforma',agencia:'Agencia',financiacion:'Financiación',seguro:'Seguros',otro:'Otro'};
+    document.getElementById('ft-gastos').innerHTML=`
+      ${gastos.length?`<table class="dtable"><thead><tr><th>Concepto</th><th>Categoría</th><th class="tr">Importe</th></tr></thead><tbody>${gastos.map(g=>`<tr><td>${g.nombre}</td><td>${CAT[g.categoria]||g.categoria}</td><td class="tr">€${fmt(g.importe)}</td></tr>`).join('')}</tbody></table><div style="display:flex;justify-content:space-between;padding:9px 0 2px;border-top:0.5px solid #DDE3EC;margin-top:5px"><span class="gtotal">Σ gastos: €${fmt(cn.totalGastos)}</span><span class="gtotal" style="background:#EBF7E2;color:#2A5E12;border-color:#B2D98A">Coste total: €${fmt((d.precio||0)+cn.totalGastos)}</span></div>`:'<div class="empty" style="padding:14px 0">Sin gastos</div>'}
+      <div class="gasto-form">
+        <div style="font-size:11px;font-weight:600;color:#6B7E96;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">➕ Añadir gasto</div>
+        <div class="g2">
+          <div class="field"><label>Categoría</label><select id="fg-cat" onchange="autonNomGasto()"><option value="notaria">Notaría</option><option value="registro">Registro</option><option value="gestoria">Gestoría</option><option value="abogado">Abogado</option><option value="procurador">Procurador</option><option value="tasacion">Tasación</option><option value="itp">ITP/AJD</option><option value="plusvalia">Plusvalía</option><option value="ibi">IBI/comunidad</option><option value="nota_simple">Nota simple</option><option value="due_diligence">Due diligence</option><option value="subasta">Subasta</option><option value="reforma">Reforma</option><option value="agencia">Agencia</option><option value="financiacion">Financiación</option><option value="seguro">Seguros</option><option value="otro">Otro</option></select></div>
+          <div class="field"><label>Concepto</label><input type="text" id="fg-nombre" placeholder="ej. Escritura notarial"></div>
+        </div>
+        <div class="g2">
+          <div class="field"><label>Importe (€)</label><input type="number" id="fg-importe" placeholder="1500"></div>
+          <div class="field"><label>Fecha</label><input type="date" id="fg-fecha" value="${new Date().toISOString().split('T')[0]}"></div>
+        </div>
+        <button class="btn btn-dark btn-sm" style="width:100%" onclick="addGastoFicha('${d.ref}','${id}','${col}')">➕ Añadir</button>
+      </div>`;
+  }
+
+  // DICTAMEN
+  document.getElementById('ft-dictamen').innerHTML=`<div class="aiarea">${d.ai_dictamen||'Sin dictamen'}</div>
+    <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap">
+      <button class="btn btn-out btn-sm" onclick="exportarOp('${id}','${col}')">⬇ Exportar</button>
+      <button class="btn btn-out btn-sm" style="color:#7A1A1A;border-color:#F0A0A0" onclick="eliminarOp('${id}','${col}')">🗑 Eliminar</button>
+    </div>`;
+
+  switchTab('resumen',document.querySelector('#ficha-tabs .modal-tab'));
+  document.getElementById('ficha-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function switchTab(name,btn){
+  document.querySelectorAll('#ficha-tabs .modal-tab').forEach(t=>t.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  ['resumen','fiscal','negociacion','inmueble','gastos','dictamen'].forEach(n=>{
+    const el=document.getElementById('ft-'+n);if(el)el.style.display=n===name?'block':'none';
+  });
+  if(name==='inmueble')setTimeout(()=>mapInst&&mapInst.invalidateSize(),300);
+}
+
+// ── FINALIZAR OPERACIÓN ───────────────────────────────────────────────────────
+function finalizarOp(id,col){
+  const cantidad=parseFloat(document.getElementById('fin-cantidad')?.value)||0;
+  if(!cantidad){alert('Introduce la cantidad obtenida');return;}
+  const tipoCobro=document.getElementById('fin-tipocobro')?.value||'venta';
+  const fechaCierre=document.getElementById('fin-fecha')?.value||new Date().toISOString().split('T')[0];
+  const lista=col==='inversion'?loadInv():loadEst();
+  const idx=lista.findIndex(o=>o.id===id);if(idx<0)return;
+  lista[idx].finalizada=true;
+  lista[idx].cantidadObtenida=cantidad;
+  lista[idx].tipoCobro=tipoCobro;
+  lista[idx].fechaCierre=fechaCierre;
+  if(col==='inversion')saveInv(lista);else saveEst(lista);
+  // Reabrir ficha para refrescar
+  abrirFicha(id,col);
+  rDash();updatePill();
+}
+
+// ── CONVERTIR ESTUDIO → INVERSIÓN ─────────────────────────────────────────────
+function convertirAInversion(id){
+  const est=loadEst();const idx=est.findIndex(o=>o.id===id);if(idx<0)return;
+  const d=est[idx];
+  if(!d.precio){alert('Introduce el precio de compra real antes de confirmar la inversión');return;}
+  d.tipoOp='inversion';d.fechaInversion=new Date().toISOString();
+  const inv=loadInv();inv.push(d);saveInv(inv);
+  est.splice(idx,1);saveEst(est);
+  closeMod('ficha-overlay');
+  showPage('inversiones');updatePill();rDash();
+  alert(`✅ "${d.ref}" confirmada como inversión realizada`);
+}
+
+// ── GASTOS ────────────────────────────────────────────────────────────────────
+function autonNomGasto(){
+  const n={notaria:'Escritura notarial',registro:'Inscripción registral',gestoria:'Honorarios gestoría',abogado:'Honorarios letrado',procurador:'Honorarios procurador',tasacion:'Informe de tasación',itp:'Liquidación ITP/AJD',plusvalia:'Plusvalía municipal',ibi:'IBI / gastos comunidad',nota_simple:'Nota simple registral',due_diligence:'Due diligence jurídico',subasta:'Depósito subasta',reforma:'Obras / reforma',agencia:'Comisión agencia',financiacion:'Intereses préstamo',seguro:'Prima seguro'};
+  const cat=document.getElementById('fg-cat')?.value;
+  const el=document.getElementById('fg-nombre');
+  if(el&&n[cat])el.value=n[cat];
+}
+function addGastoFicha(opRef,id,col){
+  const nombre=document.getElementById('fg-nombre')?.value;
+  const importe=parseFloat(document.getElementById('fg-importe')?.value)||0;
+  if(!nombre||!importe){alert('Rellena concepto e importe');return;}
+  const g={id:Date.now().toString(),opRef,categoria:document.getElementById('fg-cat')?.value||'otro',nombre,importe,fecha:document.getElementById('fg-fecha')?.value||new Date().toISOString().split('T')[0]};
+  const gastos=loadGastos();gastos.push(g);saveGastos(gastos);
+  abrirFicha(id,col);rDash();
+}
+
+// ── FORMULARIO ────────────────────────────────────────────────────────────────
+function abrirFormulario(tipo){
+  curFormTipo=tipo;curDocs=[];
+  document.getElementById('form-title').textContent=tipo==='inversion'?'Nueva inversión':'Nuevo estudio';
+  document.getElementById('form-body').innerHTML=formHTML(tipo);
+  document.getElementById('form-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function limpiarForm(){document.getElementById('form-body').innerHTML=formHTML(curFormTipo);curDocs=[];}
+function closeMod(id,e){
+  if(e&&e.target!==document.getElementById(id))return;
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow='';
+  if(id==='ficha-overlay'&&mapInst){mapInst.remove();mapInst=null;}
+}
+
+function eliminarOp(id,col){
+  if(!confirm('¿Eliminar?'))return;
+  if(col==='inversion'){let d=loadInv();d=d.filter(o=>o.id!==id);saveInv(d);}
+  else{let d=loadEst();d=d.filter(o=>o.id!==id);saveEst(d);}
+  closeMod('ficha-overlay');rDash();updatePill();
+  if(col==='inversion')rInversiones('todas');else rEstudio();
+}
+
+function exportarOp(id,col){
+  const lista=col==='inversion'?loadInv():loadEst();
+  const d=lista.find(o=>o.id===id);if(!d)return;
+  const gastos=loadGastos().filter(g=>g.opRef===d.ref);
+  const c=calc(d);const sc=d.score||score(d,c);const cn=calcNeto(d,gastos);
+  const n=calcNego(d,c,sc);
+  let txt=`NPL INVEST — ${col==='inversion'?'INVERSIÓN':'ESTUDIO'}\n${'='.repeat(38)}\nRef: ${d.ref} | ${new Date(d.fecha).toLocaleDateString('es-ES')}\n${d.direccion?`Inmueble: ${d.direccion}\n`:''}${d.refCatastral?`Ref. catastral: ${d.refCatastral}\n`:''}\nFINANCIERO\nCapital: €${fmt(d.capital)} | Precio: €${fmt(d.precio)}\nROI: ${pct(c.roi)} | TIR: ${pct(c.tir)} | LTV: ${pct(c.ltv)} | Score: ${sc}/100\n`;
+  if(col==='inversion'){
+    txt+=`Gastos: €${fmt(cn.totalGastos)} | Coste total: €${fmt((d.precio||0)+cn.totalGastos)}\nROI neto: ${pct(cn.roiNeto)} | TIR neta: ${pct(cn.tirNeto)}\n`;
+    if(d.finalizada){
+      const f=calcFiscal(d,gastos,d.cantidadObtenida||0);
+      const ccaaLabel=f.ccaa?f.ccaa.replace(/-/g,' ').replace(/\b\w/g,l=>l.toUpperCase()):'Genérica';
+      txt+=`\nOPERACIÓN FINALIZADA\nCantidad obtenida: €${fmt(d.cantidadObtenida)} | Tipo: ${d.tipoCobro||'—'}\nBase imponible: €${fmt(f.baseImponible)}\nITP (${f.itpPct}% ${ccaaLabel}): €${fmt(f.itpImporte)}\nBeneficio neto IS (25%): €${fmt(f.beneficioIS)}\nBeneficio neto IRPF: €${fmt(f.beneficioIRPF)}\n`;
+    }
+  }
+  txt+=`\nNEGOCIACIÓN\nPrimera oferta: €${fmt(n.primeraOferta)} | Mínimo: €${fmt(n.precioMin)} | Óptimo: €${fmt(n.precioOpt)} | Máximo: €${fmt(n.precioMax)}\n\n${d.ai_dictamen||''}`;
+  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${col}-${d.ref}.txt`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+function exportarUltimo(){
+  const inv=loadInv();const est=loadEst();
+  const todas=[...inv,...est].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  if(!todas.length)return;
+  const d=todas[0];exportarOp(d.id,inv.find(o=>o.id===d.id)?'inversion':'estudio');
+}
+
+// ── NAVEGACIÓN Y RENDER ───────────────────────────────────────────────────────
+function showPage(name){
+  document.querySelectorAll('.ni').forEach((b,i)=>{const ns=['dashboard','inversiones','estudio','alertas'];b.classList.toggle('active',ns[i]===name);});
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(name==='dashboard')rDash();
+  if(name==='inversiones')rInversiones('todas');
+  if(name==='estudio')rEstudio();
+  if(name==='alertas')rAlertas();
+}
+
+function rDash(){
+  const inv=loadInv();const gastos=loadGastos();const est=loadEst();
+  const abiertas=inv.filter(o=>!o.finalizada);
+  const finalizadas=inv.filter(o=>o.finalizada);
+  const ti=inv.reduce((a,o)=>a+(o.precio||0)+gastos.filter(g=>g.opRef===o.ref).reduce((s,g)=>s+(g.importe||0),0),0);
+  const benefNeto=finalizadas.reduce((a,o)=>{const go=gastos.filter(g=>g.opRef===o.ref);const f=calcFiscal(o,go,o.cantidadObtenida||0);return a+f.beneficioIS;},0);
+  const rois=inv.map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);return calcNeto(o,go).roiNeto;}).filter(isFinite);
+  const rm=rois.length?(rois.reduce((a,r)=>a+r,0)/rois.length):0;
+  document.getElementById('dash-kpis').innerHTML=`
+    <div class="kpi" style="--kc:#185FA5"><div class="kl">Abiertas</div><div class="kv">${abiertas.length}</div></div>
+    <div class="kpi" style="--kc:#2A6E14"><div class="kl">Finalizadas</div><div class="kv" style="color:#2A5E12">${finalizadas.length}</div></div>
+    <div class="kpi" style="--kc:#8A5A0A"><div class="kl">Capital + gastos</div><div class="kv">€${fmt(ti)}</div></div>
+    <div class="kpi" style="--kc:${benefNeto>=0?'#2A6E14':'#8A1818'}"><div class="kl">Benef. neto IS (finalizadas)</div><div class="kv" style="color:${benefNeto>=0?'#2A5E12':'#7A1A1A'}">€${fmt(benefNeto)}</div></div>
+    <div class="kpi" style="--kc:${rm>=15?'#2A6E14':'#8A6A0A'}"><div class="kl">ROI neto medio</div><div class="kv" style="color:${rc(rm)}">${pct(rm)}</div></div>
+    <div class="kpi" style="--kc:#854F0B"><div class="kl">En estudio</div><div class="kv" style="color:#854F0B">${est.length}</div></div>`;
+
+  const est2={extrajudicial:0,judicial:0,dual:0};inv.forEach(o=>{est2[o.estrategia]=(est2[o.estrategia]||0)+1;});const tot=inv.length||1;
+  const cols={extrajudicial:'#185FA5',judicial:'#8A5A0A',dual:'#2A6E14'};const labs={extrajudicial:'Extrajudicial',judicial:'Judicial',dual:'Dual'};
+  document.getElementById('dash-est').innerHTML=inv.length?Object.entries(est2).map(([k,v2])=>`<div class="brow"><span class="blbl">${labs[k]}</span><div class="btrk"><div class="bfil" style="width:${Math.round(v2/tot*100)}%;background:${cols[k]}"></div></div><span class="bval">${v2}</span></div>`).join(''):`<div class="empty" style="padding:12px 0">Sin inversiones</div>`;
+
+  const topR=[...finalizadas].sort((a,b)=>{const ga=gastos.filter(g=>g.opRef===a.ref);const gb2=gastos.filter(g=>g.opRef===b.ref);return calcFiscal(b,gb2,b.cantidadObtenida||0).beneficioIS-calcFiscal(a,ga,a.cantidadObtenida||0).beneficioIS;}).slice(0,5);
+  const mx=topR.length?Math.max(...topR.map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);return Math.abs(calcFiscal(o,go,o.cantidadObtenida||0).beneficioIS);}),1):100;
+  document.getElementById('dash-top').innerHTML=topR.length?topR.map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const f=calcFiscal(o,go,o.cantidadObtenida||0);const w=Math.min(100,Math.abs(f.beneficioIS)/mx*100);return`<div class="brow" style="cursor:pointer" onclick="abrirFicha('${o.id}','inversion')"><span class="blbl">${o.ref}</span><div class="btrk"><div class="bfil" style="width:${Math.round(w)}%;background:${rc(f.beneficioIS)}"></div></div><span class="bval" style="color:${rc(f.beneficioIS)}">€${fmt(f.beneficioIS/1000)}k</span></div>`;}).join(''):`<div class="empty" style="padding:12px 0">Sin finalizadas</div>`;
+
+  document.getElementById('dash-inversiones').innerHTML=abiertas.length?abiertas.slice(-4).reverse().map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const s=o.score||score(o,cn);return opCard(o,cn,s,'inversion');}).join(''):`<div class="empty"><div style="font-size:28px;opacity:.2;margin-bottom:8px">💼</div><div>Sin inversiones abiertas</div><button class="btn btn-dark btn-sm" style="margin-top:10px" onclick="abrirFormulario('inversion')">➕ Añadir</button></div>`;
+
+  document.getElementById('dash-estudios').innerHTML=est.length?est.slice(-3).reverse().map(o=>{const c2=calc(o);const s=o.score||score(o,c2);return estudioCard(o,c2,s);}).join(''):`<div class="empty"><div style="font-size:28px;opacity:.2;margin-bottom:8px">🔍</div><div>Sin estudios activos</div><button class="btn btn-amber btn-sm" style="margin-top:10px" onclick="abrirFormulario('estudio')">🔍 Añadir</button></div>`;
+}
+
+function opCard(o,cn,s,col){
+  const n=calcNego(o,calc(o),s);
+  const gastos=loadGastos().filter(g=>g.opRef===o.ref);
+  const costeTot=(o.precio||0)+cn.totalGastos;
+  return`<div class="op-card ${o.finalizada?'finalizada':''}" onclick="abrirFicha('${o.id}','${col}')">
+    <div class="op-card-header">
+      <div><div style="font-size:14px;font-weight:700;color:#0A1628">${o.ref}${o.finalizada?' ✅':''}</div><div style="font-size:11px;color:#8A9BB0;margin-top:1px">${o.direccion?o.direccion.split(',')[0]+' · ':''}${o.tipo_inmueble||''}${o.metros?' · '+o.metros+'m²':''}</div></div>
+      <div style="display:flex;gap:5px;align-items:center">${ebadge(o.estrategia)}${sbadge(s)}</div>
+    </div>
+    <div class="op-card-metrics">
+      <div class="op-card-metric"><div class="op-card-metric-val" style="color:${rc(cn.roiNeto)}">${pct(cn.roiNeto)}</div><div class="op-card-metric-lbl">ROI neto</div></div>
+      <div class="op-card-metric"><div class="op-card-metric-val">€${fmt(costeTot)}</div><div class="op-card-metric-lbl">Coste total</div></div>
+      <div class="op-card-metric"><div class="op-card-metric-val" style="color:#185FA5">€${fmt(n.primeraOferta)}</div><div class="op-card-metric-lbl">1ª oferta</div></div>
+      <div class="op-card-metric"><div class="op-card-metric-val">${pct(cn.ltv)}</div><div class="op-card-metric-lbl">LTV</div></div>
+      ${o.finalizada?`<div class="op-card-metric" style="background:#EBF7E2"><div class="op-card-metric-val" style="color:#2A5E12">€${fmt(o.cantidadObtenida)}</div><div class="op-card-metric-lbl" style="color:#2A5E12">Obtenido</div></div>`:`<div class="op-card-metric"><div class="op-card-metric-val" style="font-size:11px;color:#854F0B">Abierta</div><div class="op-card-metric-lbl">Estado</div></div>`}
+    </div>
+  </div>`;
+}
+
+function estudioCard(o,c,s){
+  const n=calcNego(o,c,s);
+  return`<div class="estudio-card" onclick="abrirFicha('${o.id}','estudio')">
+    <div class="op-card-header">
+      <div><div style="font-size:14px;font-weight:700;color:#0A1628">${o.ref}</div><div style="font-size:11px;color:#8A9BB0;margin-top:1px">${o.direccion?o.direccion.split(',')[0]+' · ':''}${o.metros?o.metros+'m²':''}</div></div>
+      <div style="display:flex;gap:5px;align-items:center"><span class="badge bwarn">Estudio</span>${sbadge(s)}</div>
+    </div>
+    <div class="op-card-metrics">
+      <div class="op-card-metric"><div class="op-card-metric-val" style="color:${rc(c.roi)}">${pct(c.roi)}</div><div class="op-card-metric-lbl">ROI bruto</div></div>
+      <div class="op-card-metric"><div class="op-card-metric-val" style="color:#185FA5">€${fmt(n.primeraOferta)}</div><div class="op-card-metric-lbl">1ª oferta</div></div>
+      <div class="op-card-metric"><div class="op-card-metric-val">€${fmt(n.precioMax)}</div><div class="op-card-metric-lbl">Precio máx.</div></div>
+      <div class="op-card-metric"><div class="op-card-metric-val">${pct(c.ltv)}</div><div class="op-card-metric-lbl">LTV</div></div>
+      <div class="op-card-metric"><div class="op-card-metric-val" style="font-size:10px;color:#854F0B">En estudio</div><div class="op-card-metric-lbl">Estado</div></div>
+    </div>
+  </div>`;
+}
+
+function rInversiones(filtro){
+  const inv=loadInv();const gastos=loadGastos();
+  let fil;
+  if(filtro==='abiertas')fil=inv.filter(o=>!o.finalizada);
+  else if(filtro==='finalizadas')fil=inv.filter(o=>o.finalizada);
+  else if(filtro==='extrajudicial'||filtro==='judicial')fil=inv.filter(o=>o.estrategia===filtro);
+  else fil=inv;
+  document.getElementById('inv-cards').innerHTML=fil.length?fil.map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const s=o.score||score(o,cn);return opCard(o,cn,s,'inversion');}).join(''):`<div class="empty" style="padding:36px"><div style="font-size:32px;opacity:.2;margin-bottom:8px">💼</div><div>Sin inversiones${filtro!=='todas'?' en esta categoría':''}</div><button class="btn btn-dark btn-sm" style="margin-top:10px" onclick="abrirFormulario('inversion')">➕ Nueva inversión</button></div>`;
+}
+function filtrarInv(f,btn){document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');rInversiones(f);}
+
+function rEstudio(){
+  const est=loadEst();
+  document.getElementById('est-cards').innerHTML=est.length?est.map(o=>{const c2=calc(o);const s=o.score||score(o,c2);return estudioCard(o,c2,s);}).join(''):`<div class="empty" style="padding:36px"><div style="font-size:32px;opacity:.2;margin-bottom:8px">🔍</div><div>Sin estudios activos</div><button class="btn btn-amber btn-sm" style="margin-top:10px" onclick="abrirFormulario('estudio')">🔍 Nuevo estudio</button></div>`;
+}
+
+function rAlertas(){
+  const inv=loadInv().filter(o=>!o.finalizada);const gastos=loadGastos();let al=[];
+  inv.forEach(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);
+    if(o.clausulas==='pendiente')al.push({op:o.ref,id:o.id,niv:'danger',txt:'Abusividad pendiente — no adquirir hasta resolución'});
+    if(o.tipo==='hipotecario_primera'&&o.vulnerabilidad!=='no')al.push({op:o.ref,id:o.id,niv:'danger',txt:'Vulnerabilidad en 1ª vivienda — riesgo suspensión lanzamiento'});
+    if(cn.rs<0)al.push({op:o.ref,id:o.id,niv:'warn',txt:`ROI estrés negativo (${pct(cn.rs)})`});
+    if(o.precio>cn.pm)al.push({op:o.ref,id:o.id,niv:'warn',txt:'Precio supera máximo recomendado'});
+    if(cn.roiNeto<cn.roi*0.7&&cn.totalGastos>0)al.push({op:o.ref,id:o.id,niv:'warn',txt:`Gastos erosionan ROI: ${pct(cn.roi)} → ${pct(cn.roiNeto)}`});
+    if(o.epi==='alto')al.push({op:o.ref,id:o.id,niv:'warn',txt:'EPI alto — riesgo plan de pagos con quita'});
+    if(cn.ltv>90)al.push({op:o.ref,id:o.id,niv:'warn',txt:`LTV ${pct(cn.ltv)} — colchón insuficiente`});
+  });
+  document.getElementById('alertas-lista').innerHTML=al.length?al.map(a=>{const bg=a.niv==='danger'?'#FEECEC':'#FEF3E2';const tc=a.niv==='danger'?'#7A1A1A':'#7A4A0A';const ico=a.niv==='danger'?'🔴':'🟡';return`<div style="display:flex;gap:10px;padding:10px 13px;border-radius:9px;margin-bottom:7px;background:${bg};cursor:pointer;align-items:flex-start" onclick="abrirFicha('${a.id}','inversion')"><div style="font-size:17px">${ico}</div><div style="flex:1"><div style="font-size:10px;font-weight:700;color:${tc};text-transform:uppercase;letter-spacing:.05em">${a.op}</div><div style="font-size:12px;color:${tc};margin-top:2px">${a.txt}</div></div><div style="font-size:11px;color:${tc};opacity:.6">Ver →</div></div>`;}).join(''):`<div style="display:flex;gap:10px;padding:10px 13px;border-radius:9px;background:#EBF7E2;align-items:center"><div style="font-size:19px">✅</div><div style="font-size:13px;color:#2A5E12;font-weight:600">Sin alertas — portfolio saneado</div></div>`;
+}
+
+function updatePill(){
+  const inv=loadInv().filter(o=>!o.finalizada);const gastos=loadGastos();let n=0;
+  inv.forEach(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);if(o.clausulas==='pendiente')n++;if(o.tipo==='hipotecario_primera'&&o.vulnerabilidad!=='no')n++;if(cn.rs<0)n++;if(o.precio>cn.pm)n++;});
+  const p=document.getElementById('alert-pill');if(n>0){p.style.display='flex';document.getElementById('alert-count').textContent=n;}else p.style.display='none';
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMod('ficha-overlay');closeMod('form-overlay');}});
+updatePill();rDash();
+</script>
+</body>
+</html>
