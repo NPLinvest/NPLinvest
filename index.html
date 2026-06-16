@@ -418,23 +418,32 @@ function score(d,c){
 
 // ── NEGOCIACIÓN ──────────────────────────────────────────────────────────────
 function calcNegociacion(d,c,sc){
-  // Factor de riesgo: 0 (bajo riesgo) a 1 (alto riesgo)
   const riskFactor=Math.max(0,Math.min(1,(100-sc)/100));
+  const precioCompra=d.precio||0;
+  const gastos=loadGastos().filter(g=>g.opRef===d.ref).reduce((a,g)=>a+(g.importe||0),0);
+  const totalInvertido=precioCompra+gastos;
 
-  // Base: precio máximo recomendado (55% del valor neto)
+  // Margen mínimo según riesgo — siempre sobre lo invertido
+  // Score alto (bajo riesgo) → 10% | Score medio → 15% | Score bajo (alto riesgo) → 20%
+  const margenMin=sc>=80?0.10:sc>=60?0.15:0.20;
+  const sueloPorInversion=totalInvertido>0?Math.round(totalInvertido*(1+margenMin)):0;
+
+  // Precio máximo: 55% del valor neto (lo que el colateral aguanta)
   const precioMax=c.pm;
 
-  // Mínimo: ajuste agresivo según riesgo
-  // Más riesgo → menor precio mínimo aceptable
-  const factorMin=0.35+riskFactor*0.10; // entre 35% y 45% del valor neto
-  const precioMin=Math.round(c.vn*factorMin);
+  // Precio mínimo: el mayor entre el suelo por inversión y el 35-40% del valor neto
+  const factorMin=0.35+riskFactor*0.08;
+  const precioMinColateral=Math.round(c.vn*factorMin);
+  const precioMin=Math.max(sueloPorInversion,precioMinColateral);
 
-  // Óptimo: equilibrio entre rentabilidad objetivo (20% ROI) y riesgo
-  const factorOpt=0.45+riskFactor*0.08; // entre 45% y 53% del valor neto
-  const precioOpt=Math.round(c.vn*factorOpt);
+  // Precio óptimo: el que da ROI objetivo (20%) sobre lo invertido, sin superar el máximo
+  const precioOptObj=totalInvertido>0?Math.round(totalInvertido*1.20):Math.round(c.vn*0.48);
+  const factorOpt=0.45+riskFactor*0.06;
+  const precioOptColateral=Math.round(c.vn*factorOpt);
+  const precioOpt=Math.min(precioMax,Math.max(precioOptObj,precioOptColateral,precioMin));
 
-  // Primera oferta recomendada: siempre por debajo del óptimo
-  const primeraOferta=Math.round(precioOpt*0.88);
+  // Primera oferta: siempre por encima del mínimo, por debajo del óptimo
+  const primeraOferta=Math.round(Math.max(precioMin*1.05,precioOpt*0.90));
 
   // Quita sobre el nominal
   const quitaMin=d.capital>0?Math.round((1-precioMin/d.capital)*100):0;
@@ -461,7 +470,8 @@ function calcNegociacion(d,c,sc){
     estrategiaTxt='Riesgo alto — el precio debe compensar las contingencias. No pagues por encima del mínimo sin resolver antes los riesgos críticos identificados.';
   }
 
-  return{precioMin,precioOpt,precioMax,primeraOferta,quitaMin,quitaOpt,quitaMax,estrategia,estrategiaClass,estrategiaTxt,enNegociacion,riskFactor};
+  const margenMinPct=sc>=80?10:sc>=60?15:20;
+  return{precioMin,precioOpt,precioMax,primeraOferta,quitaMin,quitaOpt,quitaMax,estrategia,estrategiaClass,estrategiaTxt,enNegociacion,riskFactor,margenMinPct,totalInvertido,sueloPorInversion};
 }
 
 function renderNego(d,c,sc,container){
@@ -472,7 +482,7 @@ function renderNego(d,c,sc,container){
       <div class="nego-box nego-min">
         <div class="nego-val" style="color:#7A1A1A">€${fmt(n.precioMin)}</div>
         <div class="nego-lbl" style="color:#7A1A1A">Precio mínimo</div>
-        <div class="nego-sub" style="color:#7A1A1A">Quita ${n.quitaMin}% sobre nominal<br>No ceder por debajo</div>
+        <div class="nego-sub" style="color:#7A1A1A">Quita ${n.quitaMin}% sobre nominal<br>Cubre inversión + margen ${n.margenMinPct}%<br>No ceder por debajo</div>
       </div>
       <div class="nego-box nego-opt">
         <div class="nego-val" style="color:#2A5E12">€${fmt(n.precioOpt)}</div>
@@ -489,7 +499,7 @@ function renderNego(d,c,sc,container){
     <div style="background:#E4F0FC;border:0.5px solid #9DCAF0;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
       <div>
         <div style="font-size:10px;font-weight:600;color:#0F3D6E;text-transform:uppercase;letter-spacing:.06em">Primera oferta recomendada</div>
-        <div style="font-size:11px;color:#185FA5;margin-top:2px">Abre aquí — deja margen para conceder hasta el precio óptimo</div>
+        <div style="font-size:11px;color:#185FA5;margin-top:2px">Abre aquí — deja margen hasta el precio óptimo · Inversión total: €${fmt(n.totalInvertido)} · Margen mínimo: ${n.margenMinPct}%</div>
       </div>
       <div style="font-size:22px;font-weight:700;color:#185FA5">€${fmt(n.primeraOferta)}</div>
     </div>
@@ -697,6 +707,10 @@ function guardarOperacion(){
       <div style="font-size:15px;font-weight:700;color:#0A1628">€${fmt(c.vn)}</div>
     </div>
     ${d.metros?`<div style="margin-top:6px;padding:10px 14px;background:#F7F9FC;border-radius:8px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:10px;color:#8A9BB0;text-transform:uppercase;letter-spacing:.05em">€/m²</div><div style="font-size:15px;font-weight:700;color:#0A1628">€${fmt(d.mercado/d.metros)}/m²</div></div>`:''}`;
+
+  // Portales en resultado directo
+  const portalesHtml=generarPortales(d);
+  if(portalesHtml){document.getElementById('n_fin').innerHTML+=portalesHtml;}
 
   // Negociación
   renderNego(d,c,sc,'n_nego');
