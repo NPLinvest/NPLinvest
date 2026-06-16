@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NPL Invest — Plataforma de análisis de inversión en deuda</title>
+<title>NPL Invest</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F0F2F5;color:#0A1628;min-height:100vh}
-.app{max-width:1200px;margin:0 auto}
-.header{background:#0A1628;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.header{background:#0A1628;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:300}
 .hb{display:flex;align-items:center;gap:10px}
 .hlogo{width:30px;height:30px;background:#1A3A5C;border-radius:6px;display:flex;align-items:center;justify-content:center;border:0.5px solid #2A5080;font-size:14px}
 .htitle{font-size:14px;font-weight:600;color:#fff;letter-spacing:.04em}
@@ -16,10 +17,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .hsub{font-size:11px;color:#5A8AB0}
 .apill{background:#3D1515;color:#F09595;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500;display:none;align-items:center;gap:4px;border:0.5px solid #6B2222}
 .nav{background:#0F1F38;display:flex;padding:0 20px;border-bottom:0.5px solid #1A2F4A;overflow-x:auto}
-.ni{padding:12px 14px;font-size:10px;font-weight:600;color:#4A6A8A;cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:5px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;transition:color .15s}
+.ni{padding:12px 14px;font-size:10px;font-weight:600;color:#4A6A8A;cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:5px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
 .ni.active{color:#7BB8F0;border-bottom-color:#378ADD}
 .ni:hover:not(.active){color:#8AABCC}
-.body{padding:20px 20px 40px}
+.body{padding:20px 20px 40px;max-width:1280px;margin:0 auto}
 .page{display:none}.page.active{display:block}
 .ph{margin-bottom:16px}
 .pt{font-size:20px;font-weight:600;color:#0A1628}
@@ -34,17 +35,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ptitle{font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:6px}
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .field label{font-size:10px;font-weight:600;color:#6B7E96;text-transform:uppercase;letter-spacing:.06em}
-.field input,.field select,.field textarea{width:100%;padding:8px 10px;border:0.5px solid #C8D0DC;border-radius:8px;font-size:13px;color:#0A1628;background:#fff;font-family:inherit;transition:border-color .15s}
+.field input,.field select,.field textarea{width:100%;padding:8px 10px;border:0.5px solid #C8D0DC;border-radius:8px;font-size:13px;color:#0A1628;background:#fff;font-family:inherit}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#378ADD;box-shadow:0 0 0 3px rgba(55,138,221,.1)}
 .field textarea{resize:vertical;min-height:52px}
 .field input.ai-filled{border-color:#2A6E14;background:#F0FAE8}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;letter-spacing:.01em}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none}
 .btn-dark{background:#0A1628;color:#fff}.btn-dark:hover{background:#0F2040}
 .btn-blue{background:#185FA5;color:#fff}.btn-blue:hover{background:#1A6AB8}
 .btn-out{background:#fff;color:#3A4A5C;border:0.5px solid #C8D0DC}.btn-out:hover{background:#F5F7FA}
-.btn-green{background:#2A6E14;color:#fff}.btn-green:hover{opacity:.9}
 .btn-sm{padding:6px 12px;font-size:12px}
 .btn-xs{padding:4px 8px;font-size:11px}
 .badge{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600}
@@ -58,48 +58,91 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .brow{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px}
 .blbl{width:90px;color:#8A9BB0;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btrk{flex:1;height:14px;background:#EEF1F5;border-radius:3px;overflow:hidden}
-.bfil{height:100%;border-radius:3px;transition:width .4s}
+.bfil{height:100%;border-radius:3px}
 .bval{width:56px;font-weight:600;color:#0A1628;text-align:right;flex-shrink:0;font-size:12px}
-.oprow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid #EEF1F5;cursor:pointer;transition:background .1s}
-.oprow:last-child{border-bottom:none}
-.oprow:hover{background:#F7F9FC;margin:0 -18px;padding:10px 18px;border-radius:8px}
-.opico{width:36px;height:36px;border-radius:8px;background:#E4F0FC;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
-.opname{font-size:13px;font-weight:600;color:#0A1628}
-.opsub{font-size:11px;color:#8A9BB0;margin-top:2px}
-.arow{display:flex;gap:10px;padding:10px 14px;border-radius:10px;margin-bottom:8px;align-items:flex-start}
-.aiarea{background:#F7F9FC;border:0.5px solid #DDE3EC;border-radius:10px;padding:14px;font-size:13px;line-height:1.8;color:#0A1628;min-height:100px;white-space:pre-wrap}
+.aiarea{background:#F7F9FC;border:0.5px solid #DDE3EC;border-radius:10px;padding:14px;font-size:13px;line-height:1.8;color:#0A1628;min-height:80px;white-space:pre-wrap}
 .dtable{width:100%;border-collapse:collapse;font-size:12px}
 .dtable th{text-align:left;font-weight:600;color:#8A9BB0;padding:7px 8px;border-bottom:0.5px solid #DDE3EC;text-transform:uppercase;letter-spacing:.05em;font-size:10px}
 .dtable td{padding:9px 8px;border-bottom:0.5px solid #EEF1F5;color:#0A1628;vertical-align:middle}
 .dtable tr:last-child td{border-bottom:none}
 .dtable tr:hover td{background:#F7F9FC}
 .tr{text-align:right}.tb{font-weight:600}
-.empty{text-align:center;padding:40px 16px;color:#8A9BB0}
-.empty .eico{font-size:36px;opacity:.2;display:block;margin-bottom:10px}
+.empty{text-align:center;padding:36px 16px;color:#8A9BB0}
 .rhead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:10px;margin-bottom:12px}
 .ftabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
-.ftab{padding:6px 12px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;border:0.5px solid #C8D0DC;background:#fff;color:#6B7E96;text-transform:uppercase;letter-spacing:.05em;transition:all .15s}
+.ftab{padding:6px 12px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;border:0.5px solid #C8D0DC;background:#fff;color:#6B7E96;text-transform:uppercase;letter-spacing:.05em}
 .ftab.active{background:#0A1628;color:#fff;border-color:#0A1628}
-.drop-zone{border:1.5px dashed #9DCAF0;border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;background:#F7FBFF;transition:all .15s}
+.drop-zone{border:1.5px dashed #9DCAF0;border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;background:#F7FBFF}
 .drop-zone:hover,.drop-zone.over{background:#EDF5FF;border-color:#378ADD}
-.drop-eico{font-size:28px;color:#378ADD;display:block;margin-bottom:8px}
-.drop-title{font-size:13px;font-weight:600;color:#0F3D6E;margin-bottom:3px}
-.drop-sub{font-size:11px;color:#6B8FAA}
 .doc-chip{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#EBF7E2;border:0.5px solid #B2D98A;border-radius:8px;margin-top:8px}
-.doc-chip-name{flex:1;font-size:12px;font-weight:600;color:#2A5E12;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.doc-chip-sub{font-size:10px;color:#5A9A3A;margin-top:1px}
 .extract-banner{background:#E4F0FC;border:0.5px solid #9DCAF0;border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-top:10px}
 .gasto-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#F7F9FC;border:0.5px solid #EEF1F5;border-radius:8px;margin-bottom:6px}
-.gasto-del{padding:3px 6px;border:0.5px solid #DDE3EC;border-radius:4px;background:#fff;cursor:pointer;color:#8A9BB0;font-size:13px;transition:all .15s}
-.gasto-del:hover{background:#FEECEC;color:#7A1A1A;border-color:#F0A0A0}
+.gasto-del{padding:3px 6px;border:0.5px solid #DDE3EC;border-radius:4px;background:#fff;cursor:pointer;color:#8A9BB0}
+.gasto-del:hover{background:#FEECEC;color:#7A1A1A}
 .gtotal{display:inline-flex;align-items:center;gap:4px;background:#FEECEC;color:#7A1A1A;border:0.5px solid #F0A0A0;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:600}
-.filled-badge{display:inline-flex;align-items:center;gap:3px;background:#EBF7E2;color:#2A5E12;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:6px}
-.no-api-banner{background:#FEF3E2;border:0.5px solid #F5C878;border-radius:10px;padding:12px 14px;font-size:12px;color:#7A4A0A;margin-bottom:12px;display:flex;align-items:flex-start;gap:8px;line-height:1.6}
-@media(max-width:640px){.g2,.g3{grid-template-columns:1fr}.kv{font-size:20px}}
+#map{height:240px;border-radius:10px;border:0.5px solid #DDE3EC;z-index:1}
+.portales-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.portal-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:0.5px solid;text-decoration:none}
+.portal-btn:hover{opacity:.85}
+.pi{background:#F5F0FF;color:#6B21A8;border-color:#C4B5FD}
+.pf{background:#FFF0F0;color:#BE123C;border-color:#FECDD3}
+.ph2{background:#FFF7E6;color:#92400E;border-color:#FCD34D}
+.pk{background:#F0FFF4;color:#14532D;border-color:#86EFAC}
+.pp{background:#EFF6FF;color:#1E40AF;border-color:#BFDBFE}
+.pc{background:#F8FAFC;color:#374151;border-color:#CBD5E0}
+.addr-suggestions{position:absolute;z-index:400;background:#fff;border:0.5px solid #C8D0DC;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);width:100%;max-height:180px;overflow-y:auto}
+.addr-sug{padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:0.5px solid #EEF1F5;color:#0A1628}
+.addr-sug:last-child{border-bottom:none}
+.addr-sug:hover{background:#F0F2F5}
+.addr-wrap{position:relative}
+
+/* MODAL FICHA OPERACIÓN */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,22,40,.55);z-index:500;overflow-y:auto;padding:20px}
+.modal-overlay.open{display:flex;align-items:flex-start;justify-content:center}
+.modal{background:#F0F2F5;border-radius:16px;width:100%;max-width:900px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-header{background:#0A1628;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.modal-header h2{font-size:16px;font-weight:600;color:#fff}
+.modal-close{background:none;border:none;color:#7BB8F0;font-size:20px;cursor:pointer;padding:4px 8px;border-radius:6px}
+.modal-close:hover{background:#1A3A5C}
+.modal-body{padding:16px}
+.modal-tabs{display:flex;gap:4px;margin-bottom:14px;background:#E8ECF2;border-radius:8px;padding:4px}
+.modal-tab{padding:7px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:#6B7E96;text-transform:uppercase;letter-spacing:.05em;flex:1;text-align:center}
+.modal-tab.active{background:#fff;color:#0A1628;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+
+/* RANGO NEGOCIACIÓN */
+.nego-range{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}
+.nego-box{border-radius:10px;padding:14px;text-align:center;border:1px solid}
+.nego-min{background:#FEECEC;border-color:#F0A0A0}
+.nego-opt{background:#EBF7E2;border-color:#B2D98A}
+.nego-max{background:#FEF3E2;border-color:#F5C878}
+.nego-val{font-size:20px;font-weight:700;margin-bottom:4px}
+.nego-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;opacity:.7}
+.nego-sub{font-size:11px;margin-top:4px;opacity:.8}
+.estrategia-box{border-radius:10px;padding:14px 16px;margin-bottom:10px;border-left:4px solid}
+.estrat-conservadora{background:#EBF7E2;border-color:#2A6E14}
+.estrat-moderada{background:#FEF3E2;border-color:#8A5A0A}
+.estrat-agresiva{background:#FEECEC;border-color:#8A1818}
+.riesgo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.riesgo-item{padding:10px 12px;border-radius:8px;display:flex;align-items:center;gap:8px;border:0.5px solid}
+.r-ok{background:#EBF7E2;border-color:#B2D98A;color:#2A5E12}
+.r-warn{background:#FEF3E2;border-color:#F5C878;color:#7A4A0A}
+.r-danger{background:#FEECEC;border-color:#F0A0A0;color:#7A1A1A}
+.arow{display:flex;gap:10px;padding:10px 14px;border-radius:10px;margin-bottom:8px;align-items:flex-start}
+
+/* CARDS DE PORTFOLIO */
+.op-card{background:#fff;border:0.5px solid #DDE3EC;border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:all .15s}
+.op-card:hover{border-color:#378ADD;box-shadow:0 2px 12px rgba(55,138,221,.12);transform:translateY(-1px)}
+.op-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.op-card-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.op-card-metric{text-align:center;padding:8px;background:#F7F9FC;border-radius:6px}
+.op-card-metric-val{font-size:14px;font-weight:700;color:#0A1628}
+.op-card-metric-lbl{font-size:9px;color:#8A9BB0;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+@media(max-width:640px){.g2,.g3,.portales-grid,.nego-range,.riesgo-grid,.op-card-metrics{grid-template-columns:1fr}.modal{border-radius:12px}}
 </style>
 </head>
 <body>
-<div class="app">
+
 <div class="header">
   <div class="hb">
     <div class="hlogo">🏦</div>
@@ -112,6 +155,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div style="width:28px;height:28px;border-radius:50%;background:#1A3A5C;border:0.5px solid #2A5080;display:flex;align-items:center;justify-content:center;font-size:13px">👤</div>
   </div>
 </div>
+
 <div class="nav">
   <div class="ni active" onclick="showPage('dashboard')">📊 Dashboard</div>
   <div class="ni" onclick="showPage('nueva')">➕ Nueva operación</div>
@@ -120,61 +164,53 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="ni" onclick="showPage('comparativa')">📈 Comparativa</div>
   <div class="ni" onclick="showPage('alertas')">🔔 Alertas</div>
 </div>
+
 <div class="body">
 
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page active">
-  <div class="ph"><div class="pt">Visión general</div><div class="ps">Resumen ejecutivo del portfolio de inversión</div></div>
+  <div class="ph"><div class="pt">Visión general</div><div class="ps">Resumen ejecutivo del portfolio</div></div>
   <div class="kgrid" id="dash-kpis"></div>
   <div class="g2" style="gap:12px">
     <div class="panel"><div class="phead"><span class="ptitle">📊 Por estrategia</span></div><div id="dash-est"></div></div>
     <div class="panel"><div class="phead"><span class="ptitle">🏆 Top ROI neto</span></div><div id="dash-top"></div></div>
   </div>
-  <div class="panel"><div class="phead"><span class="ptitle">🕐 Operaciones recientes</span></div><div id="dash-rec"></div></div>
+  <div class="panel"><div class="phead"><span class="ptitle">🕐 Últimas operaciones</span><button class="btn btn-out btn-xs" onclick="showPage('portfolio')">Ver todas →</button></div><div id="dash-rec"></div></div>
 </div>
 
 <!-- NUEVA OPERACIÓN -->
 <div id="page-nueva" class="page">
   <div class="ph"><div class="pt">Nueva operación</div><div class="ps">Sube documentos para extraer datos automáticamente, o introdúcelos manualmente</div></div>
-
-  <div class="no-api-banner" id="no-api-banner" style="display:none">
-    ⚙️ <div><strong>Análisis de IA no configurado.</strong> Para activar la extracción automática de documentos y los dictámenes de IA, añade tu API key de Anthropic en el archivo <code>api/analyze.js</code>. El resto de la plataforma funciona sin ella.</div>
-  </div>
-
   <div class="g2" style="gap:12px;align-items:start">
     <div>
+      <!-- DOCUMENTOS -->
       <div class="panel" style="border:1px solid #9DCAF0;background:#F7FBFF">
         <div class="phead" style="border-bottom-color:#D0E8F8">
-          <span class="ptitle" style="color:#185FA5">📎 Documentos de la operación</span>
+          <span class="ptitle" style="color:#185FA5">📎 Documentos</span>
           <span id="docs-count-badge" style="display:none" class="badge bok"></span>
         </div>
         <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
-          <span class="drop-eico">📂</span>
-          <div class="drop-title">Arrastra o haz clic para subir</div>
-          <div class="drop-sub">Escritura · Nota simple · Auto · Certificación · Tasación · PDF o imagen</div>
+          <div style="font-size:28px;margin-bottom:8px">📂</div>
+          <div style="font-size:13px;font-weight:600;color:#0F3D6E;margin-bottom:3px">Arrastra o haz clic para subir</div>
+          <div style="font-size:11px;color:#6B8FAA">Escritura · Nota simple · Auto · Certificación · Tasación</div>
         </div>
         <input type="file" id="file-input" accept=".pdf,image/*" style="display:none" onchange="handleFile(this.files[0])">
         <div id="doc-chips"></div>
         <div id="extract-banner" style="display:none" class="extract-banner">
           <span style="font-size:18px">✨</span>
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:#0F3D6E">Extraer datos con IA</div>
-            <div style="font-size:11px;color:#4A7A9B;margin-top:1px">La IA leerá el documento y rellenará los campos automáticamente</div>
-          </div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:#0F3D6E">Extraer datos con IA</div><div style="font-size:11px;color:#4A7A9B;margin-top:1px">Extrae dirección, m², capital, tasación y más</div></div>
           <button class="btn btn-blue btn-sm" id="btn-extract" onclick="extraerDatos()">✨ Extraer</button>
         </div>
         <div id="extract-status" style="display:none;font-size:12px;padding:6px 0;text-align:center"></div>
       </div>
 
+      <!-- CRÉDITO -->
       <div class="panel">
-        <div class="phead">
-          <span class="ptitle">📋 Datos del crédito</span>
-          <span id="filled-badge" style="display:none" class="filled-badge">✨ Rellenado por IA</span>
-        </div>
+        <div class="phead"><span class="ptitle">📋 Crédito</span><span id="filled-badge" style="display:none;background:#EBF7E2;color:#2A5E12;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:6px">✨ IA</span></div>
         <div class="field"><label>Referencia</label><input type="text" id="n_ref" placeholder="APT-MALAGA-001"></div>
         <div class="g2">
-          <div class="field"><label>Tipo</label><select id="n_tipo"><option value="hipotecario_segunda">Hipotecario — 2ª vivienda</option><option value="hipotecario_primera">Hipotecario — 1ª vivienda</option><option value="ordinario">Ordinario</option></select></div>
-          <div class="field"><label>Estrategia</label><select id="n_est"><option value="extrajudicial">Extrajudicial</option><option value="judicial">Judicial</option><option value="dual">Dual</option></select></div>
+          <div class="field"><label>Tipo crédito</label><select id="n_tipo"><option value="hipotecario_segunda">Hipotecario — 2ª vivienda</option><option value="hipotecario_primera">Hipotecario — 1ª vivienda</option><option value="ordinario">Ordinario</option></select></div>
+          <div class="field"><label>Estrategia inicial</label><select id="n_est"><option value="extrajudicial">Extrajudicial</option><option value="judicial">Judicial</option><option value="dual">Dual</option></select></div>
         </div>
         <div class="g3">
           <div class="field"><label>Capital (€)</label><input type="number" id="n_cap" placeholder="150000"></div>
@@ -192,11 +228,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
       </div>
 
+      <!-- INMUEBLE -->
       <div class="panel">
-        <div class="phead"><span class="ptitle">🏢 Colateral</span></div>
+        <div class="phead"><span class="ptitle">🏢 Inmueble y localización</span></div>
+        <div class="field">
+          <label>Dirección completa</label>
+          <div class="addr-wrap">
+            <input type="text" id="n_direccion" placeholder="Calle Mayor 10, Madrid" oninput="buscarDireccion()" autocomplete="off">
+            <div id="addr-suggestions" class="addr-suggestions" style="display:none"></div>
+          </div>
+        </div>
+        <div class="g2">
+          <div class="field"><label>Tipo de inmueble</label><select id="n_tipo_inmueble"><option value="piso">Piso</option><option value="atico">Ático</option><option value="bajo">Bajo</option><option value="bajo_jardin">Bajo con jardín</option><option value="local">Local comercial</option><option value="chalet">Chalet / adosado</option><option value="solar">Solar</option></select></div>
+          <div class="field"><label>Metros cuadrados (m²)</label><input type="number" id="n_metros" placeholder="90"></div>
+        </div>
+        <div class="g3">
+          <div class="field"><label>Planta</label><input type="text" id="n_planta" placeholder="3º"></div>
+          <div class="field"><label>Habitaciones</label><input type="number" id="n_habitaciones" placeholder="3"></div>
+          <div class="field"><label>Baños</label><input type="number" id="n_banos" placeholder="1"></div>
+        </div>
         <div class="g2">
           <div class="field"><label>Tasación escrituraria (€)</label><input type="number" id="n_tas" placeholder="200000"></div>
-          <div class="field"><label>Valor mercado (€)</label><input type="number" id="n_mer" placeholder="180000"></div>
+          <div class="field"><label>Valor mercado estimado (€)</label><input type="number" id="n_mer" placeholder="180000"></div>
         </div>
         <div class="g3">
           <div class="field"><label>Cargas anteriores (€)</label><input type="number" id="n_car" placeholder="0"></div>
@@ -207,7 +260,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
           <div class="field"><label>Liquidez zona</label><select id="n_liq"><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option></select></div>
           <div class="field"><label>Ocupación</label><select id="n_ocu"><option value="vacio">Vacío</option><option value="deudor">Deudor</option><option value="arrendado_posterior">Arrendado (post.)</option><option value="arrendado_anterior">Arrendado (ant.)</option><option value="tercero">Tercero</option></select></div>
         </div>
-        <div class="field"><label>Observaciones</label><textarea id="n_obs" placeholder="Notas registrales, procesales, deudor..."></textarea></div>
+        <div class="field"><label>Observaciones (negociación, estado, deudor...)</label><textarea id="n_obs" placeholder="ej. Estoy en negociación con el deudor. El banco pide 95.000€. Inmueble en buen estado..."></textarea></div>
       </div>
 
       <div style="display:flex;gap:8px">
@@ -216,18 +269,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
 
+    <!-- PANEL RESULTADO -->
     <div>
       <div id="n_placeholder" class="panel" style="text-align:center;padding:48px 16px">
         <div style="font-size:48px;margin-bottom:16px;opacity:.3">📊</div>
-        <div style="font-size:14px;font-weight:600;color:#0A1628;margin-bottom:6px">Sube un documento o introduce los datos</div>
-        <div style="font-size:12px;color:#8A9BB0;line-height:1.6">El análisis financiero y el dictamen aparecerán aquí automáticamente</div>
+        <div style="font-size:14px;font-weight:600;color:#0A1628;margin-bottom:6px">Introduce los datos</div>
+        <div style="font-size:12px;color:#8A9BB0;line-height:1.6">El análisis completo aparecerá aquí</div>
       </div>
       <div id="n_resultado" style="display:none">
         <div class="panel"><div class="phead"><span class="ptitle">📊 Análisis financiero</span></div><div id="n_fin"></div></div>
-        <div class="panel">
-          <div class="phead"><span class="ptitle">🧠 Dictamen</span><button class="btn btn-out btn-xs" onclick="exportarDictamen()">⬇ Exportar</button></div>
-          <div class="aiarea" id="n_ai">Introduce los datos y guarda la operación para ver el análisis aquí.</div>
-        </div>
+        <div class="panel"><div class="phead"><span class="ptitle">🤝 Estrategia de negociación</span></div><div id="n_nego"></div></div>
+        <div class="panel"><div class="phead"><span class="ptitle">🧠 Dictamen jurídico</span><button class="btn btn-out btn-xs" onclick="exportarDictamen()">⬇</button></div><div class="aiarea" id="n_ai"></div></div>
       </div>
     </div>
   </div>
@@ -235,38 +287,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <!-- GASTOS -->
 <div id="page-gastos" class="page">
-  <div class="ph"><div class="pt">Gestión de gastos</div><div class="ps">Registra todos los costes por operación para calcular la rentabilidad neta real</div></div>
+  <div class="ph"><div class="pt">Gestión de gastos</div><div class="ps">Registra todos los costes por operación</div></div>
   <div class="g2" style="gap:12px;align-items:start">
     <div>
       <div class="panel">
         <div class="phead"><span class="ptitle">➕ Añadir gasto</span></div>
         <div class="g2">
           <div class="field"><label>Operación</label><select id="g_opref"><option value="">— Sin asignar —</option></select></div>
-          <div class="field"><label>Categoría</label>
-            <select id="g_cat" onchange="autoNombre()">
-              <option value="notaria">Notaría</option><option value="registro">Registro de la Propiedad</option><option value="gestoria">Gestoría</option><option value="abogado">Honorarios abogado</option><option value="procurador">Procurador</option><option value="tasacion">Tasación / valoración</option><option value="itp">ITP / AJD</option><option value="plusvalia">Plusvalía municipal</option><option value="ibi">IBI / comunidad</option><option value="nota_simple">Nota simple registral</option><option value="due_diligence">Due diligence</option><option value="subasta">Depósito / costas subasta</option><option value="reforma">Reforma / mantenimiento</option><option value="agencia">Agencia inmobiliaria</option><option value="financiacion">Intereses financiación</option><option value="seguro">Seguros</option><option value="otro">Otro</option>
-            </select>
-          </div>
+          <div class="field"><label>Categoría</label><select id="g_cat" onchange="autoNombre()"><option value="notaria">Notaría</option><option value="registro">Registro</option><option value="gestoria">Gestoría</option><option value="abogado">Abogado</option><option value="procurador">Procurador</option><option value="tasacion">Tasación</option><option value="itp">ITP/AJD</option><option value="plusvalia">Plusvalía</option><option value="ibi">IBI/comunidad</option><option value="nota_simple">Nota simple</option><option value="due_diligence">Due diligence</option><option value="subasta">Subasta</option><option value="reforma">Reforma</option><option value="agencia">Agencia</option><option value="financiacion">Financiación</option><option value="seguro">Seguros</option><option value="otro">Otro</option></select></div>
         </div>
         <div class="g2">
-          <div class="field"><label>Concepto</label><input type="text" id="g_nombre" placeholder="ej. Escritura de cesión"></div>
+          <div class="field"><label>Concepto</label><input type="text" id="g_nombre" placeholder="ej. Escritura notarial"></div>
           <div class="field"><label>Importe (€)</label><input type="number" id="g_importe" placeholder="1500" step="0.01"></div>
         </div>
         <div class="g2">
           <div class="field"><label>Fecha</label><input type="date" id="g_fecha"></div>
-          <div class="field"><label>Fase</label><select id="g_fase"><option value="adquisicion">Adquisición</option><option value="gestion">Gestión</option><option value="judicial">Proceso judicial</option><option value="venta">Venta / salida</option><option value="otros">Otros</option></select></div>
+          <div class="field"><label>Fase</label><select id="g_fase"><option value="adquisicion">Adquisición</option><option value="gestion">Gestión</option><option value="judicial">Judicial</option><option value="venta">Venta</option><option value="otros">Otros</option></select></div>
         </div>
-        <div class="field"><label>Notas</label><textarea id="g_notas" placeholder="Notas adicionales..."></textarea></div>
+        <div class="field"><label>Notas</label><textarea id="g_notas" placeholder="Notas..."></textarea></div>
         <button class="btn btn-dark" style="width:100%" onclick="addGasto()">➕ Añadir gasto</button>
       </div>
       <div class="panel"><div class="phead"><span class="ptitle">📊 Por categoría</span></div><div id="g_por_cat"></div></div>
     </div>
     <div>
       <div class="panel">
-        <div class="phead">
-          <span class="ptitle">🧾 Registro</span>
-          <select id="g_filtro_op" onchange="renderGastos()" style="padding:5px 8px;border:0.5px solid #C8D0DC;border-radius:6px;font-size:12px;color:#0A1628;background:#fff"><option value="">Todas</option></select>
-        </div>
+        <div class="phead"><span class="ptitle">🧾 Registro</span><select id="g_filtro_op" onchange="renderGastos()" style="padding:5px 8px;border:0.5px solid #C8D0DC;border-radius:6px;font-size:12px;color:#0A1628;background:#fff"><option value="">Todas</option></select></div>
         <div id="g_lista"></div>
       </div>
       <div class="panel"><div class="phead"><span class="ptitle">🧮 Rentabilidad neta</span></div><div id="g_rentabilidad"></div></div>
@@ -277,7 +322,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- PORTFOLIO -->
 <div id="page-portfolio" class="page">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-    <div><div class="pt">Portfolio</div><div class="ps">Gestión de todas las inversiones activas</div></div>
+    <div><div class="pt">Portfolio</div><div class="ps">Haz clic en una operación para ver la ficha completa</div></div>
     <button class="btn btn-dark btn-sm" onclick="showPage('nueva')">➕ Nueva</button>
   </div>
   <div class="ftabs">
@@ -286,43 +331,67 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="ftab" onclick="filtrar('judicial',this)">Judicial</div>
     <div class="ftab" onclick="filtrar('dual',this)">Dual</div>
   </div>
-  <div class="panel" style="padding:0 18px"><div id="port-tabla"></div></div>
+  <div id="port-cards"></div>
 </div>
 
 <!-- COMPARATIVA -->
 <div id="page-comparativa" class="page">
   <div class="ph"><div class="pt">Comparativa</div><div class="ps">Análisis cruzado incluyendo gastos reales</div></div>
-  <div class="panel"><div class="phead"><span class="ptitle">📋 Tabla comparativa</span></div><div id="comp-tab"></div></div>
+  <div class="panel"><div class="phead"><span class="ptitle">📋 Tabla</span></div><div id="comp-tab"></div></div>
   <div class="g2" style="gap:12px">
     <div class="panel"><div class="phead"><span class="ptitle">📊 ROI neto</span></div><div id="comp-roi"></div></div>
-    <div class="panel"><div class="phead"><span class="ptitle">📉 LTV mercado</span></div><div id="comp-ltv"></div></div>
+    <div class="panel"><div class="phead"><span class="ptitle">📉 LTV</span></div><div id="comp-ltv"></div></div>
   </div>
 </div>
 
 <!-- ALERTAS -->
 <div id="page-alertas" class="page">
-  <div class="ph"><div class="pt">Centro de alertas</div><div class="ps">Riesgos activos detectados en el portfolio</div></div>
+  <div class="ph"><div class="pt">Centro de alertas</div><div class="ps">Riesgos activos en el portfolio</div></div>
   <div class="panel"><div id="alertas-lista"></div></div>
 </div>
 
-</div>
+</div><!-- /body -->
+
+<!-- MODAL FICHA OPERACIÓN -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Operación</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-tabs">
+        <div class="modal-tab active" onclick="switchModalTab('resumen',this)">📊 Resumen</div>
+        <div class="modal-tab" onclick="switchModalTab('negociacion',this)">🤝 Negociación</div>
+        <div class="modal-tab" onclick="switchModalTab('inmueble',this)">🗺 Inmueble</div>
+        <div class="modal-tab" onclick="switchModalTab('gastos_op',this)">🧾 Gastos</div>
+        <div class="modal-tab" onclick="switchModalTab('dictamen',this)">🧠 Dictamen</div>
+      </div>
+      <div id="modal-resumen"></div>
+      <div id="modal-negociacion" style="display:none"></div>
+      <div id="modal-inmueble" style="display:none"></div>
+      <div id="modal-gastos_op" style="display:none"></div>
+      <div id="modal-dictamen" style="display:none"></div>
+    </div>
+  </div>
 </div>
 
 <script>
-const SK='npl_v5_ops';const GK='npl_v5_gastos';
-let curDocs=[];
+const SK='npl_v7';const GK='npl_g7';
+let curDocs=[],mapInstances={},addrTimeout=null,currentOpId=null;
 
 const fmt=x=>(parseFloat(x)||0).toLocaleString('es-ES',{maximumFractionDigits:0});
 const pct=x=>(parseFloat(x)||0).toFixed(1)+'%';
 const vv=id=>{const e=document.getElementById(id);return e?e.value:'';};
 const nn=id=>parseFloat(vv(id))||0;
-const setVal=(id,v)=>{const e=document.getElementById(id);if(e&&v!==null&&v!==undefined&&v!==''){e.value=v;if(e.tagName==='INPUT')e.classList.add('ai-filled');}};
+const setVal=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null&&v!==''){e.value=v;if(e.tagName==='INPUT')e.classList.add('ai-filled');}};
 
 function loadOps(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
 function saveOps(ops){localStorage.setItem(SK,JSON.stringify(ops))}
 function loadGastos(){try{return JSON.parse(localStorage.getItem(GK))||[]}catch(e){return[]}}
 function saveGastos(g){localStorage.setItem(GK,JSON.stringify(g))}
 
+// ── CÁLCULO ──────────────────────────────────────────────────────────────────
 function calc(d){
   const cap=d.capital||0,mer=d.mercado||0,car=d.cargas||0,cap2=d.capex||0,mes=d.meses||12,pre=d.precio||0,tas=d.tasacion||0;
   const vn=mer-car-cap2,gb=vn-pre,roi=pre>0?(gb/pre*100):0;
@@ -346,10 +415,207 @@ function score(d,c){
   if(d.liquidez==='alta')s+=5;if(d.liquidez==='baja')s-=10;
   return Math.max(0,Math.min(100,Math.round(s)));
 }
-function sbadge(s){if(s>=80)return`<span class="badge bok">✓ ${s}/100</span>`;if(s>=60)return`<span class="badge bwarn">~ ${s}/100</span>`;return`<span class="badge bdanger">⚠ ${s}/100</span>`;}
-function ebadge(e){const m={extrajudicial:'binfo',judicial:'bwarn',dual:'bok'};const l={extrajudicial:'Extrajudicial',judicial:'Judicial',dual:'Dual'};return`<span class="badge ${m[e]||'bgray'}">${l[e]||e}</span>`;}
-function rc(r){return r>=15?'#2A5E12':r>=0?'#7A4A0A':'#7A1A1A';}
 
+// ── NEGOCIACIÓN ──────────────────────────────────────────────────────────────
+function calcNegociacion(d,c,sc){
+  // Factor de riesgo: 0 (bajo riesgo) a 1 (alto riesgo)
+  const riskFactor=Math.max(0,Math.min(1,(100-sc)/100));
+
+  // Base: precio máximo recomendado (55% del valor neto)
+  const precioMax=c.pm;
+
+  // Mínimo: ajuste agresivo según riesgo
+  // Más riesgo → menor precio mínimo aceptable
+  const factorMin=0.35+riskFactor*0.10; // entre 35% y 45% del valor neto
+  const precioMin=Math.round(c.vn*factorMin);
+
+  // Óptimo: equilibrio entre rentabilidad objetivo (20% ROI) y riesgo
+  const factorOpt=0.45+riskFactor*0.08; // entre 45% y 53% del valor neto
+  const precioOpt=Math.round(c.vn*factorOpt);
+
+  // Primera oferta recomendada: siempre por debajo del óptimo
+  const primeraOferta=Math.round(precioOpt*0.88);
+
+  // Quita sobre el nominal
+  const quitaMin=d.capital>0?Math.round((1-precioMin/d.capital)*100):0;
+  const quitaOpt=d.capital>0?Math.round((1-precioOpt/d.capital)*100):0;
+  const quitaMax=d.capital>0?Math.round((1-precioMax/d.capital)*100):0;
+
+  // Análisis de la observación (si menciona negociación)
+  const obs=(d.obs||'').toLowerCase();
+  const enNegociacion=obs.includes('negoci')||obs.includes('oferta')||obs.includes('banco pide')||obs.includes('piden');
+
+  // Estrategia recomendada
+  let estrategia,estrategiaClass,estrategiaTxt;
+  if(sc>=80){
+    estrategia='Estrategia conservadora';
+    estrategiaClass='estrat-conservadora';
+    estrategiaTxt='Riesgo bajo — tienes margen para mantenerte firme. Abre con la primera oferta y concede solo si hay contrapropuesta razonable. El colateral te protege.';
+  }else if(sc>=60){
+    estrategia='Estrategia moderada';
+    estrategiaClass='estrat-moderada';
+    estrategiaTxt='Riesgo medio — negocia con flexibilidad pero con límite claro. Si el deudor acepta el precio óptimo, cierra. Evita alargarlo más de 30 días.';
+  }else{
+    estrategia='Estrategia agresiva (descuento mayor)';
+    estrategiaClass='estrat-agresiva';
+    estrategiaTxt='Riesgo alto — el precio debe compensar las contingencias. No pagues por encima del mínimo sin resolver antes los riesgos críticos identificados.';
+  }
+
+  return{precioMin,precioOpt,precioMax,primeraOferta,quitaMin,quitaOpt,quitaMax,estrategia,estrategiaClass,estrategiaTxt,enNegociacion,riskFactor};
+}
+
+function renderNego(d,c,sc,container){
+  const n=calcNegociacion(d,c,sc);
+  const obs=d.obs||'';
+  let html=`
+    <div class="nego-range">
+      <div class="nego-box nego-min">
+        <div class="nego-val" style="color:#7A1A1A">€${fmt(n.precioMin)}</div>
+        <div class="nego-lbl" style="color:#7A1A1A">Precio mínimo</div>
+        <div class="nego-sub" style="color:#7A1A1A">Quita ${n.quitaMin}% sobre nominal<br>No ceder por debajo</div>
+      </div>
+      <div class="nego-box nego-opt">
+        <div class="nego-val" style="color:#2A5E12">€${fmt(n.precioOpt)}</div>
+        <div class="nego-lbl" style="color:#2A5E12">Precio óptimo</div>
+        <div class="nego-sub" style="color:#2A5E12">Quita ${n.quitaOpt}% sobre nominal<br>Objetivo de cierre</div>
+      </div>
+      <div class="nego-box nego-max">
+        <div class="nego-val" style="color:#7A4A0A">€${fmt(n.precioMax)}</div>
+        <div class="nego-lbl" style="color:#7A4A0A">Precio máximo</div>
+        <div class="nego-sub" style="color:#7A4A0A">Quita ${n.quitaMax}% sobre nominal<br>Límite absoluto</div>
+      </div>
+    </div>
+
+    <div style="background:#E4F0FC;border:0.5px solid #9DCAF0;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:10px;font-weight:600;color:#0F3D6E;text-transform:uppercase;letter-spacing:.06em">Primera oferta recomendada</div>
+        <div style="font-size:11px;color:#185FA5;margin-top:2px">Abre aquí — deja margen para conceder hasta el precio óptimo</div>
+      </div>
+      <div style="font-size:22px;font-weight:700;color:#185FA5">€${fmt(n.primeraOferta)}</div>
+    </div>
+
+    <div class="estrategia-box ${n.estrategiaClass}">
+      <div style="font-size:12px;font-weight:700;margin-bottom:4px">${n.estrategia}</div>
+      <div style="font-size:12px;line-height:1.6">${n.estrategiaTxt}</div>
+    </div>`;
+
+  if(obs){
+    html+=`<div style="background:#F7F9FC;border:0.5px solid #DDE3EC;border-radius:8px;padding:12px 14px;margin-top:8px">
+      <div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Análisis de tu situación</div>
+      <div style="font-size:12px;color:#0A1628;line-height:1.7">${analizarObs(obs,n,d,c)}</div>
+    </div>`;
+  }
+
+  html+=`<div style="margin-top:12px">
+    <div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Riesgos que afectan al precio</div>
+    <div class="riesgo-grid">
+      ${riesgoItem(d.tipo==='hipotecario_segunda','2ª vivienda','1ª vivienda — vulnerabilidad posible')}
+      ${riesgoItem(d.clausulas==='si','Cláusulas resueltas',d.clausulas==='pendiente'?'Cláusulas pendientes — descuento adicional':'Cláusulas sin revisar')}
+      ${riesgoItem(d.epi==='bajo','EPI bajo',d.epi==='alto'?'EPI alto — riesgo real':'EPI medio')}
+      ${riesgoItem(c.ltv<70,`LTV ${pct(c.ltv)} — OK`,`LTV ${pct(c.ltv)} — alto`)}
+      ${riesgoItem(d.ocupacion==='vacio','Vacío','Ocupado — coste adicional')}
+      ${riesgoItem(d.fase==='subasta_senalada'||d.fase==='tasacion_hecha','Fase avanzada — ventaja','Fase inicial — más tiempo')}
+    </div>
+  </div>`;
+
+  document.getElementById(container).innerHTML=html;
+}
+
+function analizarObs(obs,n,d,c){
+  let partes=[];
+  // Detectar si menciona precio del banco
+  const matchPrecio=obs.match(/(\d[\d.,]+)\s*(?:€|euros?)?/);
+  if(matchPrecio){
+    const precioBanco=parseFloat(matchPrecio[1].replace(',',''));
+    if(precioBanco>0){
+      if(precioBanco>n.precioMax){partes.push(`El banco pide aprox. €${fmt(precioBanco)}, que supera tu precio máximo (€${fmt(n.precioMax)}). Contraoferta con €${fmt(n.primeraOferta)} y justifica con el riesgo jurídico existente.`);}
+      else if(precioBanco>n.precioOpt){partes.push(`El banco pide aprox. €${fmt(precioBanco)}, por encima del precio óptimo (€${fmt(n.precioOpt)}). Hay margen de negociación. Abre con €${fmt(n.primeraOferta)}.`);}
+      else{partes.push(`El precio solicitado (€${fmt(precioBanco)}) está dentro del rango aceptable. Puedes intentar bajar hasta €${fmt(n.primeraOferta)} de apertura.`);}
+    }
+  }
+  if(obs.includes('negoci'))partes.push('Al estar en negociación activa, el tiempo juega a tu favor — el banco ya ha decidido vender.');
+  if(obs.includes('buen estado'))partes.push('Inmueble en buen estado: reduce el capex y mejora el valor de salida.');
+  if(obs.includes('reform')||obs.includes('mal estado'))partes.push('Si requiere reforma, asegúrate de haberla incluido en el capex.');
+  if(!partes.length)partes.push(`Con estos datos, tu rango de negociación es €${fmt(n.precioMin)}—€${fmt(n.precioMax)}. Abre con €${fmt(n.primeraOferta)}.`);
+  return partes.join(' ');
+}
+
+function riesgoItem(ok,txtOk,txtKo){
+  const cls=ok?'r-ok':'r-warn';const ico=ok?'✓':'⚠';const txt=ok?txtOk:txtKo;
+  return`<div class="riesgo-item ${cls}"><span style="font-size:14px">${ico}</span><span style="font-size:11px;font-weight:500">${txt}</span></div>`;
+}
+
+// ── MAPA ──────────────────────────────────────────────────────────────────────
+function initMap(containerId,lat,lng,addr){
+  setTimeout(()=>{
+    if(mapInstances[containerId]){mapInstances[containerId].remove();delete mapInstances[containerId];}
+    const el=document.getElementById(containerId);if(!el)return;
+    const m=L.map(containerId).setView([lat,lng],15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(m);
+    L.marker([lat,lng]).addTo(m).bindPopup(addr).openPopup();
+    mapInstances[containerId]=m;
+    m.invalidateSize();
+  },300);
+}
+
+async function geocodificarYMostrar(addr,mapId){
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&countrycodes=es&limit=1`);
+    const data=await r.json();
+    if(data.length)initMap(mapId,parseFloat(data[0].lat),parseFloat(data[0].lon),addr);
+  }catch(e){}
+}
+
+async function buscarDireccion(){
+  const q=vv('n_direccion');
+  if(q.length<5){document.getElementById('addr-suggestions').style.display='none';return;}
+  clearTimeout(addrTimeout);
+  addrTimeout=setTimeout(async()=>{
+    try{
+      const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=es&limit=5`);
+      const data=await r.json();
+      const sug=document.getElementById('addr-suggestions');
+      if(!data.length){sug.style.display='none';return;}
+      sug.innerHTML=data.map((d,i)=>`<div class="addr-sug" onclick="seleccionarDir(${i})" data-lat="${d.lat}" data-lng="${d.lon}" data-display="${d.display_name}">${d.display_name}</div>`).join('');
+      sug.style.display='block';
+    }catch(e){}
+  },400);
+}
+
+function seleccionarDir(i){
+  const items=document.querySelectorAll('#addr-suggestions .addr-sug');
+  const item=items[i];
+  document.getElementById('n_direccion').value=item.dataset.display;
+  document.getElementById('addr-suggestions').style.display='none';
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.addr-wrap'))document.getElementById('addr-suggestions').style.display='none';});
+
+function generarPortales(d){
+  if(!d.direccion)return'';
+  const partes=d.direccion.split(',');
+  const muni=(partes.length>1?partes[partes.length-2]:partes[0]).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-');
+  const muniF=muni.replace(/-/g,'_');
+  const metros=d.metros||0;const precio=d.mercado||0;const hab=d.habitaciones||0;
+  let params=[];
+  if(metros>0)params.push(`superficie-min=${Math.round(metros*0.75)},superficie-max=${Math.round(metros*1.25)}`);
+  if(precio>0)params.push(`precio-max=${Math.round(precio*1.3)}`);
+  if(hab>0)params.push(`habitaciones-min=${hab}`);
+  const idealistaUrl=`https://www.idealista.com/venta-viviendas/${muni}/${params.length?'con-'+params.join(',')+'/':''}`;
+  return`<div style="margin-top:14px">
+    <div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">🔍 Ver comparables en portales</div>
+    <div class="portales-grid">
+      <a href="${idealistaUrl}" target="_blank" class="portal-btn pi">🏠 Idealista</a>
+      <a href="https://www.fotocasa.es/es/comprar/viviendas/${muniF}/todas-las-zonas/l" target="_blank" class="portal-btn pf">📷 Fotocasa</a>
+      <a href="https://www.habitaclia.com/comprar-pisos-en-${muni}.htm" target="_blank" class="portal-btn ph2">🏘 Habitaclia</a>
+      <a href="https://www.pisos.com/pisos/${muni}-venta/" target="_blank" class="portal-btn pp">🏡 Pisos.com</a>
+      <a href="https://www.kyero.com/es/propiedades/espana/${muni}" target="_blank" class="portal-btn pk">🌍 Kyero</a>
+      <a href="https://www1.sedecatastro.gob.es/Cartografia/mapa.aspx" target="_blank" class="portal-btn pc">📋 Catastro</a>
+    </div>
+    <div style="font-size:10px;color:#8A9BB0;margin-top:6px;text-align:center">Filtros aplicados: ${muni}${metros?' · '+metros+'m²':''}${hab?' · '+hab+' hab.':''}</div>
+  </div>`;
+}
+
+// ── DOCUMENTOS ────────────────────────────────────────────────────────────────
 function dragOver(e){e.preventDefault();document.getElementById('drop-zone').classList.add('over');}
 function dragLeave(){document.getElementById('drop-zone').classList.remove('over');}
 function dropFile(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('over');const f=e.dataTransfer.files[0];if(f)processFile(f);}
@@ -358,64 +624,63 @@ function processFile(f){
   if(f.size>10*1024*1024){alert('Máximo 10 MB');return;}
   const rd=new FileReader();
   rd.onload=ev=>{
-    const b64=ev.target.result.split(',')[1];
-    curDocs.push({nombre:f.name,b64,mime:f.type||'application/pdf',size:f.size});
+    curDocs.push({nombre:f.name,b64:ev.target.result.split(',')[1],mime:f.type||'application/pdf',size:f.size});
     renderDocChips();
     document.getElementById('extract-banner').style.display='flex';
     document.getElementById('docs-count-badge').style.display='inline-flex';
     document.getElementById('docs-count-badge').textContent=`${curDocs.length} doc${curDocs.length>1?'s':''}`;
-    document.getElementById('drop-zone').innerHTML=`<span class="drop-eico">➕</span><div class="drop-title">Añadir otro documento</div><div class="drop-sub">Puedes subir varios documentos a la vez</div>`;
+    document.getElementById('drop-zone').innerHTML=`<div style="font-size:24px;margin-bottom:6px">➕</div><div style="font-size:12px;font-weight:600;color:#0F3D6E">Añadir otro documento</div>`;
     document.getElementById('file-input').value='';
   };
   rd.readAsDataURL(f);
 }
 function renderDocChips(){
-  let h='';
-  curDocs.forEach((d,i)=>{h+=`<div class="doc-chip"><span style="font-size:16px">📄</span><div style="flex:1;min-width:0"><div class="doc-chip-name">${d.nombre}</div><div class="doc-chip-sub">${(d.size/1024).toFixed(0)} KB</div></div><button onclick="removeDoc(${i})" style="background:none;border:none;cursor:pointer;color:#5A9A3A;font-size:14px">✕</button></div>`;});
-  document.getElementById('doc-chips').innerHTML=h;
+  document.getElementById('doc-chips').innerHTML=curDocs.map((d,i)=>`<div class="doc-chip"><span>📄</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#2A5E12;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.nombre}</div><div style="font-size:10px;color:#5A9A3A">${(d.size/1024).toFixed(0)} KB</div></div><button onclick="removeDoc(${i})" style="background:none;border:none;cursor:pointer;color:#5A9A3A;font-size:14px">✕</button></div>`).join('');
 }
-function removeDoc(i){curDocs.splice(i,1);renderDocChips();if(!curDocs.length){document.getElementById('extract-banner').style.display='none';document.getElementById('docs-count-badge').style.display='none';document.getElementById('drop-zone').innerHTML=`<span class="drop-eico">📂</span><div class="drop-title">Arrastra o haz clic para subir</div><div class="drop-sub">Escritura · Nota simple · Auto · Certificación · Tasación · PDF o imagen</div>`;}}
+function removeDoc(i){curDocs.splice(i,1);renderDocChips();if(!curDocs.length){document.getElementById('extract-banner').style.display='none';document.getElementById('docs-count-badge').style.display='none';document.getElementById('drop-zone').innerHTML=`<div style="font-size:28px;margin-bottom:8px">📂</div><div style="font-size:13px;font-weight:600;color:#0F3D6E;margin-bottom:3px">Arrastra o haz clic para subir</div><div style="font-size:11px;color:#6B8FAA">Escritura · Nota simple · Auto · Certificación · Tasación</div>`;}}
 
 async function extraerDatos(){
-  if(!curDocs.length){alert('Sube al menos un documento');return;}
+  if(!curDocs.length)return;
   document.getElementById('btn-extract').disabled=true;
   document.getElementById('extract-status').style.display='block';
   document.getElementById('extract-status').style.color='#185FA5';
-  document.getElementById('extract-status').textContent='Analizando documentos y extrayendo datos...';
+  document.getElementById('extract-status').textContent='⏳ Analizando documentos...';
   try{
-    const formData=new FormData();
-    curDocs.forEach((d,i)=>{formData.append(`doc_${i}`,JSON.stringify({b64:d.b64,mime:d.mime,nombre:d.nombre}));});
-    formData.append('count',curDocs.length);
-    const r=await fetch('/api/extract',{method:'POST',body:formData});
-    if(!r.ok)throw new Error('API no disponible');
+    const body=new FormData();
+    curDocs.forEach((d,i)=>body.append(`doc_${i}`,JSON.stringify({b64:d.b64,mime:d.mime})));
+    body.append('count',curDocs.length);
+    const r=await fetch('/api/extract',{method:'POST',body});
+    if(!r.ok)throw new Error();
     const data=await r.json();
-    if(data.capital)setVal('n_cap',data.capital);
-    if(data.intereses)setVal('n_int',data.intereses);
-    if(data.tasacion)setVal('n_tas',data.tasacion);
-    if(data.mercado)setVal('n_mer',data.mercado);
+    ['capital','intereses','tasacion','mercado','metros','habitaciones','planta'].forEach(k=>{if(data[k])setVal('n_'+k.replace('cargas_anteriores','car'),data[k]);});
     if(data.cargas_anteriores)setVal('n_car',data.cargas_anteriores);
-    if(data.tipo){document.getElementById('n_tipo').value=data.tipo;}
-    if(data.fase){document.getElementById('n_fase').value=data.fase;}
-    if(data.clausulas){document.getElementById('n_cla').value=data.clausulas;}
+    if(data.direccion){setVal('n_direccion',data.direccion);}
+    if(data.tipo)document.getElementById('n_tipo').value=data.tipo;
+    if(data.tipo_inmueble)document.getElementById('n_tipo_inmueble').value=data.tipo_inmueble;
+    if(data.fase)document.getElementById('n_fase').value=data.fase;
+    if(data.clausulas)document.getElementById('n_cla').value=data.clausulas;
     if(data.observaciones)setVal('n_obs',data.observaciones);
     document.getElementById('filled-badge').style.display='inline-flex';
     document.getElementById('extract-banner').style.display='none';
     document.getElementById('extract-status').style.color='#2A6E14';
-    document.getElementById('extract-status').textContent='✓ Datos extraídos — revisa los campos en verde y completa lo que falte';
+    document.getElementById('extract-status').textContent='✓ Datos extraídos — revisa los campos en verde';
   }catch(e){
     document.getElementById('extract-status').style.color='#7A4A0A';
-    document.getElementById('extract-status').textContent='⚠ API de IA no configurada. Introduce los datos manualmente.';
+    document.getElementById('extract-status').textContent='⚠ API no configurada. Introduce los datos manualmente.';
   }
   document.getElementById('btn-extract').disabled=false;
 }
 
+// ── GUARDAR ───────────────────────────────────────────────────────────────────
 function guardarOperacion(){
   const ref=vv('n_ref');if(!ref){alert('Introduce una referencia');return;}
   const capital=nn('n_cap');if(!capital){alert('Introduce el capital pendiente');return;}
-  const d={id:Date.now().toString(),ref,tipo:vv('n_tipo'),capital,intereses:nn('n_int'),fecha_pago:vv('n_fecha'),fase:vv('n_fase'),estrategia:vv('n_est'),clausulas:vv('n_cla'),vulnerabilidad:vv('n_vul'),epi:vv('n_epi'),precio:nn('n_pre'),tasacion:nn('n_tas'),mercado:nn('n_mer'),cargas:nn('n_car'),capex:nn('n_cap2'),meses:nn('n_mes')||12,liquidez:vv('n_liq'),ocupacion:vv('n_ocu'),obs:vv('n_obs'),fecha:new Date().toISOString(),docs:curDocs.map(x=>x.nombre)};
+  const d={id:Date.now().toString(),ref,tipo:vv('n_tipo'),capital,intereses:nn('n_int'),fecha_pago:vv('n_fecha'),fase:vv('n_fase'),estrategia:vv('n_est'),clausulas:vv('n_cla'),vulnerabilidad:vv('n_vul'),epi:vv('n_epi'),precio:nn('n_pre'),tasacion:nn('n_tas'),mercado:nn('n_mer'),cargas:nn('n_car'),capex:nn('n_cap2'),meses:nn('n_mes')||12,liquidez:vv('n_liq'),ocupacion:vv('n_ocu'),obs:vv('n_obs'),direccion:vv('n_direccion'),tipo_inmueble:vv('n_tipo_inmueble'),metros:nn('n_metros'),habitaciones:nn('n_habitaciones'),banos:nn('n_banos'),planta:vv('n_planta'),fecha:new Date().toISOString(),docs:curDocs.map(x=>x.nombre)};
   const c=calc(d);const sc=score(d,c);d.score=sc;
   document.getElementById('n_placeholder').style.display='none';
   document.getElementById('n_resultado').style.display='block';
+
+  // Análisis financiero
   const verd=sc>=80?'Operación recomendada':sc>=60?'Viable con cautelas':'Alto riesgo';
   const vc=sc>=80?'#2A5E12':sc>=60?'#7A4A0A':'#7A1A1A';
   const vbg=sc>=80?'#EBF7E2':sc>=60?'#FEF3E2':'#FEECEC';
@@ -425,52 +690,164 @@ function guardarOperacion(){
     <div class="g3" style="gap:8px;margin-top:12px">
       <div style="background:#F7F9FC;border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:700;color:${rc(c.roi)}">${pct(c.roi)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:3px;text-transform:uppercase;letter-spacing:.05em">ROI bruto</div></div>
       <div style="background:#F7F9FC;border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:700;color:${rc(c.rs)}">${pct(c.rs)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:3px;text-transform:uppercase;letter-spacing:.05em">ROI estrés</div></div>
-      <div style="background:#F7F9FC;border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:700;color:#0A1628">${pct(c.ltv)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:3px;text-transform:uppercase;letter-spacing:.05em">LTV mercado</div></div>
+      <div style="background:#F7F9FC;border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:700;color:#0A1628">${pct(c.ltv)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:3px;text-transform:uppercase;letter-spacing:.05em">LTV</div></div>
     </div>
-    <div style="margin-top:10px;padding:10px 14px;background:${d.precio<=c.pm?'#EBF7E2':'#FEF3E2'};border-radius:8px;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:10px;font-weight:700;color:${d.precio<=c.pm?'#2A5E12':'#7A4A0A'};text-transform:uppercase;letter-spacing:.05em">Precio máx. recomendado</div>
-      <div style="font-size:15px;font-weight:700;color:${d.precio<=c.pm?'#2A5E12':'#7A4A0A'}">€${fmt(c.pm)}</div>
-    </div>
-    <div style="margin-top:6px;padding:10px 14px;background:#F7F9FC;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+    <div style="margin-top:10px;padding:10px 14px;background:#F7F9FC;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
       <div style="font-size:10px;color:#8A9BB0;text-transform:uppercase;letter-spacing:.05em">Valor neto realizable</div>
       <div style="font-size:15px;font-weight:700;color:#0A1628">€${fmt(c.vn)}</div>
-    </div>`;
+    </div>
+    ${d.metros?`<div style="margin-top:6px;padding:10px 14px;background:#F7F9FC;border-radius:8px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:10px;color:#8A9BB0;text-transform:uppercase;letter-spacing:.05em">€/m²</div><div style="font-size:15px;font-weight:700;color:#0A1628">€${fmt(d.mercado/d.metros)}/m²</div></div>`:''}`;
 
-  const dictamen=generarDictamen(d,c,sc);
-  document.getElementById('n_ai').textContent=dictamen;
-  d.ai_dictamen=dictamen;
+  // Negociación
+  renderNego(d,c,sc,'n_nego');
+
+  // Dictamen
+  const dict=generarDictamen(d,c,sc);
+  document.getElementById('n_ai').textContent=dict;
+  d.ai_dictamen=dict;
+
   const ops=loadOps();ops.push(d);saveOps(ops);updatePill();populateOpSelects();
 }
 
 function generarDictamen(d,c,sc){
-  const verd=sc>=80?'RECOMENDADA':sc>=60?'VIABLE CON CAUTELAS':'ALTO RIESGO — NO RECOMENDADA';
+  const verd=sc>=80?'RECOMENDADA':sc>=60?'VIABLE CON CAUTELAS':'ALTO RIESGO';
   let riesgos=[];
-  if(d.tipo==='hipotecario_primera'&&d.vulnerabilidad!=='no')riesgos.push('• Riesgo de suspensión de lanzamiento por vulnerabilidad (Ley 12/2023)');
-  if(d.clausulas==='pendiente')riesgos.push('• Incidente de abusividad pendiente de resolución — BLOQUEA la adquisición');
-  if(d.clausulas==='no_revisadas')riesgos.push('• Cláusulas abusivas sin revisar — requiere análisis previo');
-  if(d.epi==='alto')riesgos.push('• Perfil EPI alto — riesgo de plan de pagos con quita judicial (art. 497 TRLC)');
-  if(d.epi==='medio')riesgos.push('• Perfil EPI medio — monitorizar situación patrimonial del deudor');
-  if(c.ltv>90)riesgos.push(`• LTV sobre mercado del ${pct(c.ltv)} — colchón de valor insuficiente`);
-  if(c.rs<0)riesgos.push(`• ROI negativo en escenario de estrés (${pct(c.rs)}) — revisar precio de entrada`);
-  if(d.ocupacion==='arrendado_anterior')riesgos.push('• Arrendamiento anterior a hipoteca — no se extingue con la ejecución');
-  if(d.precio>c.pm)riesgos.push(`• Precio ofertado (€${fmt(d.precio)}) supera el máximo recomendado (€${fmt(c.pm)})`);
-  if(!riesgos.length)riesgos.push('• Sin riesgos críticos identificados con los datos actuales');
-
+  if(d.tipo==='hipotecario_primera'&&d.vulnerabilidad!=='no')riesgos.push('• Riesgo suspensión lanzamiento (Ley 12/2023)');
+  if(d.clausulas==='pendiente')riesgos.push('• Abusividad pendiente — BLOQUEA adquisición');
+  if(d.clausulas==='no_revisadas')riesgos.push('• Cláusulas sin revisar — análisis obligatorio');
+  if(d.epi==='alto')riesgos.push('• EPI alto — riesgo quita judicial (art. 497 TRLC)');
+  if(c.ltv>90)riesgos.push(`• LTV ${pct(c.ltv)} — colchón insuficiente`);
+  if(c.rs<0)riesgos.push(`• ROI estrés negativo (${pct(c.rs)})`);
+  if(d.ocupacion==='arrendado_anterior')riesgos.push('• Arrendamiento anterior — no se extingue');
+  if(!riesgos.length)riesgos.push('• Sin riesgos críticos identificados');
+  const n=calcNegociacion(d,c,sc);
   let pasos=[];
-  if(d.estrategia==='extrajudicial'||d.estrategia==='dual')pasos.push('1. Contacto previo con el deudor para tantear disposición a acuerdo extrajudicial');
-  pasos.push(`2. Cerrar la cesión del crédito ${d.precio>c.pm?'renegociando el precio a máximo €'+fmt(c.pm):'al precio ofertado'}`);
-  pasos.push('3. Notificar la cesión al deudor y al juzgado si hay procedimiento en curso (art. 16 LEC)');
-  if(d.clausulas==='no_revisadas')pasos.push('4. Análisis de cláusulas abusivas antes del cierre — añadir R&W al LSA');
-  if(d.estrategia==='extrajudicial'||d.estrategia==='dual')pasos.push('4. Enviar OVC con propuesta de quita al deudor (LO 1/2025)');
-  pasos.push('5. Formalizar acuerdo en escritura pública para obtener título ejecutivo directo');
-
-  return `DICTAMEN DE OPERACIÓN: ${d.ref}\n${'─'.repeat(40)}\nVALORACIÓN: ${verd} (${sc}/100)\n\n1. RIESGOS CLAVE\n${riesgos.join('\n')}\n\n2. RECOMENDACIÓN\nPrecio máximo recomendado: €${fmt(c.pm)} (55% del valor neto realizable de €${fmt(c.vn)})\nROI esperado: ${pct(c.roi)} bruto | TIR anualizada: ${pct(c.tir)}\nEscenario de estrés (−30% valor): ${pct(c.rs)}\n\n3. PRÓXIMOS PASOS\n${pasos.join('\n')}\n\n─────────────────────────────────────\nNota: Este dictamen es orientativo. Para operaciones concretas, consulta el expediente completo.`;
+  if(d.estrategia!=='judicial')pasos.push(`1. Oferta inicial: €${fmt(n.primeraOferta)} — deja margen hasta €${fmt(n.precioOpt)}`);
+  pasos.push(`2. Cerrar cesión — no superar €${fmt(n.precioMax)}`);
+  pasos.push('3. Notificar cesión (art. 16 LEC si hay procedimiento)');
+  if(d.clausulas==='no_revisadas')pasos.push('4. Revisar cláusulas abusivas antes del cierre');
+  if(d.estrategia!=='judicial')pasos.push('5. OVC con quita al deudor si estrategia extrajudicial');
+  return `DICTAMEN: ${d.ref}\n${'─'.repeat(36)}\nVALORACIÓN: ${verd} (${sc}/100)\n${d.direccion?`INMUEBLE: ${d.direccion}\n`:''}\n1. RIESGOS\n${riesgos.join('\n')}\n\n2. NEGOCIACIÓN\nPrimera oferta: €${fmt(n.primeraOferta)}\nÓptimo: €${fmt(n.precioOpt)} | Máximo: €${fmt(n.precioMax)}\nROI bruto: ${pct(c.roi)} | TIR: ${pct(c.tir)} | Estrés: ${pct(c.rs)}\n\n3. PRÓXIMOS PASOS\n${pasos.join('\n')}\n${'─'.repeat(36)}`;
 }
 
-const CAT_LABELS={notaria:'Notaría',registro:'Registro',gestoria:'Gestoría',abogado:'Abogado',procurador:'Procurador',tasacion:'Tasación',itp:'ITP/AJD',plusvalia:'Plusvalía',ibi:'IBI/comunidad',nota_simple:'Nota simple',due_diligence:'Due diligence',subasta:'Subasta',reforma:'Reforma',agencia:'Agencia',financiacion:'Financiación',seguro:'Seguros',otro:'Otro'};
-const FASE_LABELS={adquisicion:'Adquisición',gestion:'Gestión',judicial:'Judicial',venta:'Venta',otros:'Otros'};
+function rc(r){return r>=15?'#2A5E12':r>=0?'#7A4A0A':'#7A1A1A';}
 
-function autoNombre(){const cat=vv('g_cat');const n={notaria:'Escritura notarial',registro:'Inscripción registral',gestoria:'Honorarios gestoría',abogado:'Honorarios letrado',procurador:'Honorarios procurador',tasacion:'Informe de tasación',itp:'Liquidación ITP/AJD',plusvalia:'Plusvalía municipal',ibi:'IBI / gastos comunidad',nota_simple:'Nota simple registral',due_diligence:'Due diligence jurídico',subasta:'Depósito subasta',reforma:'Obras / reforma',agencia:'Comisión agencia',financiacion:'Intereses préstamo',seguro:'Prima seguro'};const el=document.getElementById('g_nombre');if(el&&n[cat])el.value=n[cat];}
+// ── MODAL FICHA OPERACIÓN ────────────────────────────────────────────────────
+function abrirFicha(id){
+  const ops=loadOps();const d=ops.find(o=>o.id===id);if(!d)return;
+  currentOpId=id;
+  const gastos=loadGastos();const go=gastos.filter(g=>g.opRef===d.ref);
+  const c=calc(d);const sc=d.score||score(d,c);const cn=calcNeto(d,go);
+
+  document.getElementById('modal-title').textContent=`${d.ref} ${d.direccion?'· '+d.direccion.split(',')[0]:''}`;
+
+  // TAB RESUMEN
+  const verd=sc>=80?'Recomendada':sc>=60?'Viable':' Alto riesgo';
+  const vc=sc>=80?'#2A5E12':sc>=60?'#7A4A0A':'#7A1A1A';
+  const vbg=sc>=80?'#EBF7E2':sc>=60?'#FEF3E2':'#FEECEC';
+  document.getElementById('modal-resumen').innerHTML=`
+    <div class="rhead" style="background:${vbg};margin-bottom:12px">
+      <div><div style="font-size:16px;font-weight:700;color:${vc}">${verd} · Score ${sc}/100</div>
+      <div style="font-size:11px;color:${vc};margin-top:2px">${d.estrategia} · ${d.tipo} · Fase: ${d.fase}</div></div>
+      <div style="text-align:right"><div style="font-size:10px;color:${vc};opacity:.7;text-transform:uppercase;letter-spacing:.05em">TIR</div><div style="font-size:22px;font-weight:700;color:${vc}">${pct(cn.tirNeto)}</div></div>
+    </div>
+    <div class="g3" style="gap:8px;margin-bottom:12px">
+      <div style="background:#F7F9FC;border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:700;color:${rc(cn.roi)}">${pct(cn.roi)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:3px;text-transform:uppercase">ROI bruto</div></div>
+      <div style="background:#F7F9FC;border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:700;color:${rc(cn.roiNeto)}">${pct(cn.roiNeto)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:3px;text-transform:uppercase">ROI neto</div></div>
+      <div style="background:#F7F9FC;border-radius:8px;padding:10px;text-align:center"><div style="font-size:16px;font-weight:700;color:#0A1628">${pct(c.ltv)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:3px;text-transform:uppercase">LTV</div></div>
+    </div>
+    <table class="dtable">
+      <tr><td style="color:#8A9BB0">Capital nominal</td><td class="tr tb">€${fmt(d.capital)}</td></tr>
+      <tr><td style="color:#8A9BB0">Precio de compra</td><td class="tr tb">€${fmt(d.precio)}</td></tr>
+      <tr><td style="color:#8A9BB0">Tasación escrituraria</td><td class="tr">€${fmt(d.tasacion)}</td></tr>
+      <tr><td style="color:#8A9BB0">Valor mercado</td><td class="tr">€${fmt(d.mercado)}</td></tr>
+      <tr><td style="color:#8A9BB0">Valor neto realizable</td><td class="tr">€${fmt(cn.vn)}</td></tr>
+      <tr><td style="color:#8A9BB0">Gastos registrados</td><td class="tr" style="color:#7A4A0A">€${fmt(cn.totalGastos)}</td></tr>
+      <tr><td style="color:#8A9BB0">Ganancia neta estimada</td><td class="tr" style="color:${cn.gnNeto>=0?'#2A5E12':'#7A1A1A'}">€${fmt(cn.gnNeto)}</td></tr>
+      ${d.metros?`<tr><td style="color:#8A9BB0">Precio €/m²</td><td class="tr">€${fmt(d.mercado/d.metros)}/m²</td></tr>`:''}
+    </table>
+    ${d.obs?`<div style="margin-top:12px;padding:10px 12px;background:#F7F9FC;border-radius:8px;font-size:12px;color:#4A5568;line-height:1.6"><strong style="color:#0A1628">Observaciones:</strong> ${d.obs}</div>`:''}`;
+
+  // TAB NEGOCIACIÓN
+  document.getElementById('modal-negociacion').innerHTML='<div id="modal-nego-inner"></div>';
+  renderNego(d,c,sc,'modal-nego-inner');
+
+  // TAB INMUEBLE
+  const portales=generarPortales(d);
+  document.getElementById('modal-inmueble').innerHTML=`
+    <div style="margin-bottom:12px">
+      ${d.direccion?`<div style="font-size:14px;font-weight:600;color:#0A1628;margin-bottom:4px">📍 ${d.direccion}</div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${d.tipo_inmueble?`<span class="badge bgray">${d.tipo_inmueble}</span>`:''}
+        ${d.metros?`<span class="badge bgray">${d.metros} m²</span>`:''}
+        ${d.planta?`<span class="badge bgray">Planta ${d.planta}</span>`:''}
+        ${d.habitaciones?`<span class="badge bgray">${d.habitaciones} hab.</span>`:''}
+        ${d.banos?`<span class="badge bgray">${d.banos} baños</span>`:''}
+      </div>
+    </div>
+    ${d.direccion?`<div id="modal-map" style="height:260px;border-radius:10px;border:0.5px solid #DDE3EC;"></div>`:'<div style="text-align:center;padding:30px;color:#8A9BB0">Sin dirección introducida</div>'}
+    ${portales}`;
+  if(d.direccion)geocodificarYMostrar(d.direccion,'modal-map');
+
+  // TAB GASTOS
+  const CAT_LABELS={notaria:'Notaría',registro:'Registro',gestoria:'Gestoría',abogado:'Abogado',procurador:'Procurador',tasacion:'Tasación',itp:'ITP/AJD',plusvalia:'Plusvalía',ibi:'IBI',nota_simple:'Nota simple',due_diligence:'Due diligence',subasta:'Subasta',reforma:'Reforma',agencia:'Agencia',financiacion:'Financiación',seguro:'Seguros',otro:'Otro'};
+  document.getElementById('modal-gastos_op').innerHTML=go.length?`
+    <table class="dtable">
+      <thead><tr><th>Concepto</th><th>Categoría</th><th>Fase</th><th class="tr">Importe</th></tr></thead>
+      <tbody>${go.map(g=>`<tr><td>${g.nombre}</td><td>${CAT_LABELS[g.categoria]||g.categoria}</td><td>${g.fase}</td><td class="tr">€${fmt(g.importe)}</td></tr>`).join('')}</tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end;padding:10px 0 0;border-top:0.5px solid #DDE3EC;margin-top:6px"><span class="gtotal">Σ €${fmt(cn.totalGastos)}</span></div>
+    <div style="margin-top:10px;text-align:center"><button class="btn btn-out btn-sm" onclick="closeModal();showPage('gastos')">Gestionar gastos →</button></div>`
+    :`<div class="empty"><div style="font-size:32px;opacity:.2;margin-bottom:8px">🧾</div><div>Sin gastos registrados</div><div style="margin-top:10px"><button class="btn btn-out btn-sm" onclick="closeModal();showPage('gastos')">Añadir gastos →</button></div></div>`;
+
+  // TAB DICTAMEN
+  document.getElementById('modal-dictamen').innerHTML=`<div class="aiarea">${d.ai_dictamen||'Sin dictamen generado'}</div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-out btn-sm" onclick="exportarDictamenOp('${id}')">⬇ Exportar dictamen</button>
+      <button class="btn btn-out btn-sm" onclick="closeModal();alert('Funcionalidad próximamente')">✏️ Editar operación</button>
+      <button class="btn btn-out btn-sm" style="color:#7A1A1A;border-color:#F0A0A0" onclick="eliminarOp('${id}')">🗑 Eliminar</button>
+    </div>`;
+
+  switchModalTab('resumen',document.querySelector('.modal-tab'));
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function closeModal(e){
+  if(e&&e.target!==document.getElementById('modal-overlay'))return;
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+function switchModalTab(name,btn){
+  document.querySelectorAll('.modal-tab').forEach((t,i)=>{
+    const ns=['resumen','negociacion','inmueble','gastos_op','dictamen'];
+    t.classList.toggle('active',ns[i]===name);
+  });
+  ['resumen','negociacion','inmueble','gastos_op','dictamen'].forEach(n=>{
+    document.getElementById('modal-'+n).style.display=n===name?'block':'none';
+  });
+  if(name==='inmueble'){setTimeout(()=>{Object.values(mapInstances).forEach(m=>m.invalidateSize());},300);}
+}
+
+function eliminarOp(id){
+  if(!confirm('¿Eliminar esta operación?'))return;
+  let ops=loadOps();ops=ops.filter(o=>o.id!==id);saveOps(ops);
+  closeModal();rPort('todas');updatePill();
+}
+
+function exportarDictamenOp(id){
+  const ops=loadOps();const gastos=loadGastos();const d=ops.find(o=>o.id===id);if(!d)return;
+  const go=gastos.filter(g=>g.opRef===d.ref);const cn=calcNeto(d,go);const s=d.score||score(d,calc(d));
+  const n=calcNegociacion(d,calc(d),s);
+  const txt=`NPL INVEST — DICTAMEN COMPLETO\n${'='.repeat(40)}\nRef: ${d.ref} | ${new Date(d.fecha).toLocaleDateString('es-ES')}\n${d.direccion?`Inmueble: ${d.direccion}${d.metros?' | '+d.metros+'m²':''}\n`:''}\nFINANCIERO\nCapital: €${fmt(d.capital)} | Precio: €${fmt(d.precio)} | Gastos: €${fmt(cn.totalGastos)}\nROI bruto: ${pct(cn.roi)} | ROI neto: ${pct(cn.roiNeto)} | TIR: ${pct(cn.tirNeto)}\nLTV: ${pct(cn.ltv)} | Score: ${s}/100\n\nNEGOCIACIÓN\nPrimera oferta: €${fmt(n.primeraOferta)}\nMínimo: €${fmt(n.precioMin)} | Óptimo: €${fmt(n.precioOpt)} | Máximo: €${fmt(n.precioMax)}\n\nGASTOS\n${go.length?go.map(g=>`  ${g.nombre}: €${fmt(g.importe)}`).join('\n'):'  Sin gastos'}\n\n${d.ai_dictamen||''}`;
+  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`dictamen-${d.ref}.txt`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+
+// ── GASTOS ────────────────────────────────────────────────────────────────────
+const CAT_LABELS={notaria:'Notaría',registro:'Registro',gestoria:'Gestoría',abogado:'Abogado',procurador:'Procurador',tasacion:'Tasación',itp:'ITP/AJD',plusvalia:'Plusvalía',ibi:'IBI',nota_simple:'Nota simple',due_diligence:'Due diligence',subasta:'Subasta',reforma:'Reforma',agencia:'Agencia',financiacion:'Financiación',seguro:'Seguros',otro:'Otro'};
+const FASE_LABELS={adquisicion:'Adquisición',gestion:'Gestión',judicial:'Judicial',venta:'Venta',otros:'Otros'};
+function autoNombre(){const n={notaria:'Escritura notarial',registro:'Inscripción registral',gestoria:'Honorarios gestoría',abogado:'Honorarios letrado',procurador:'Honorarios procurador',tasacion:'Informe de tasación',itp:'Liquidación ITP/AJD',plusvalia:'Plusvalía municipal',ibi:'IBI / gastos comunidad',nota_simple:'Nota simple registral',due_diligence:'Due diligence jurídico',subasta:'Depósito subasta',reforma:'Obras / reforma',agencia:'Comisión agencia',financiacion:'Intereses préstamo',seguro:'Prima seguro'};const e=document.getElementById('g_nombre');if(e&&n[vv('g_cat')])e.value=n[vv('g_cat')];}
 
 function populateOpSelects(){
   const ops=loadOps();
@@ -481,45 +858,38 @@ function populateOpSelects(){
     if(cur)sel.value=cur;
   });
 }
-
 function addGasto(){
   const nombre=vv('g_nombre');const importe=nn('g_importe');
-  if(!nombre){alert('Introduce un concepto');return;}if(!importe){alert('Introduce un importe');return;}
+  if(!nombre||!importe){alert('Rellena concepto e importe');return;}
   const g={id:Date.now().toString(),opRef:vv('g_opref')||'',categoria:vv('g_cat'),nombre,importe,fecha:vv('g_fecha')||new Date().toISOString().split('T')[0],fase:vv('g_fase'),notas:vv('g_notas')};
   const gastos=loadGastos();gastos.push(g);saveGastos(gastos);
   document.getElementById('g_nombre').value='';document.getElementById('g_importe').value='';document.getElementById('g_notas').value='';
   renderGastos();renderGastosCat();renderRentabilidad();
 }
 function delGasto(id){let g=loadGastos();g=g.filter(x=>x.id!==id);saveGastos(g);renderGastos();renderGastosCat();renderRentabilidad();}
-
 function renderGastos(){
-  const gastos=loadGastos();const filtro=vv('g_filtro_op');
-  const fil=filtro?gastos.filter(g=>g.opRef===filtro):gastos;
+  const fil=vv('g_filtro_op');const gastos=loadGastos();
+  const data=fil?gastos.filter(g=>g.opRef===fil):gastos;
   const el=document.getElementById('g_lista');
-  if(!fil.length){el.innerHTML=`<div class="empty"><span class="eico">🧾</span><div>Sin gastos registrados</div></div>`;return;}
-  const sorted=[...fil].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
-  let h='';sorted.forEach(g=>{h+=`<div class="gasto-row"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;color:#0A1628">${g.nombre}</div><div style="font-size:10px;color:#8A9BB0;margin-top:1px">${CAT_LABELS[g.categoria]||g.categoria}${g.opRef?' · '+g.opRef:' · Sin operación'} · ${FASE_LABELS[g.fase]||g.fase}</div></div><div style="font-size:13px;font-weight:600;color:#0A1628;white-space:nowrap;margin-right:8px">€${fmt(g.importe)}</div><button class="gasto-del" onclick="delGasto('${g.id}')">✕</button></div>`;});
-  const total=fil.reduce((a,g)=>a+(g.importe||0),0);
-  h+=`<div style="display:flex;justify-content:flex-end;padding:10px 0 2px;border-top:0.5px solid #DDE3EC;margin-top:6px"><span class="gtotal">Σ Total: €${fmt(total)}</span></div>`;
+  if(!data.length){el.innerHTML=`<div class="empty"><div style="font-size:32px;opacity:.2;margin-bottom:8px">🧾</div><div>Sin gastos</div></div>`;return;}
+  let h=[...data].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).map(g=>`<div class="gasto-row"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">${g.nombre}</div><div style="font-size:10px;color:#8A9BB0">${CAT_LABELS[g.categoria]||g.categoria}${g.opRef?' · '+g.opRef:''} · ${FASE_LABELS[g.fase]||g.fase}</div></div><div style="font-size:13px;font-weight:600;margin-right:8px">€${fmt(g.importe)}</div><button class="gasto-del" onclick="delGasto('${g.id}')">✕</button></div>`).join('');
+  const total=data.reduce((a,g)=>a+(g.importe||0),0);
+  h+=`<div style="display:flex;justify-content:flex-end;padding:10px 0 2px;border-top:0.5px solid #DDE3EC;margin-top:6px"><span class="gtotal">Σ €${fmt(total)}</span></div>`;
   el.innerHTML=h;
 }
 function renderGastosCat(){
-  const gastos=loadGastos();const filtro=vv('g_filtro_op');const fil=filtro?gastos.filter(g=>g.opRef===filtro):gastos;
-  const byCat={};fil.forEach(g=>{byCat[g.categoria]=(byCat[g.categoria]||0)+(g.importe||0);});
-  const sorted=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);const maxV=sorted.length?sorted[0][1]:1;
-  const el=document.getElementById('g_por_cat');
-  if(!sorted.length){el.innerHTML=`<div class="empty" style="padding:16px 0"><span class="eico" style="font-size:24px">📊</span><div>Sin datos</div></div>`;return;}
-  let h='';sorted.forEach(([cat,val])=>{h+=`<div class="brow"><span class="blbl">${CAT_LABELS[cat]||cat}</span><div class="btrk"><div class="bfil" style="width:${Math.round(val/maxV*100)}%;background:#185FA5"></div></div><span class="bval">€${fmt(val)}</span></div>`;});
-  el.innerHTML=h;
+  const fil=vv('g_filtro_op');const gastos=loadGastos();
+  const data=fil?gastos.filter(g=>g.opRef===fil):gastos;
+  const byCat={};data.forEach(g=>{byCat[g.categoria]=(byCat[g.categoria]||0)+(g.importe||0);});
+  const sorted=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);const maxV=sorted[0]?.[1]||1;
+  document.getElementById('g_por_cat').innerHTML=sorted.length?sorted.map(([cat,val])=>`<div class="brow"><span class="blbl">${CAT_LABELS[cat]||cat}</span><div class="btrk"><div class="bfil" style="width:${Math.round(val/maxV*100)}%;background:#185FA5"></div></div><span class="bval">€${fmt(val)}</span></div>`).join(''):`<div class="empty" style="padding:14px 0"><div>Sin datos</div></div>`;
 }
 function renderRentabilidad(){
-  const ops=loadOps();const gastos=loadGastos();const el=document.getElementById('g_rentabilidad');
-  if(!ops.length){el.innerHTML=`<div class="empty" style="padding:16px 0"><span class="eico" style="font-size:24px">🧮</span><div>Sin operaciones</div></div>`;return;}
-  let h=`<table class="dtable"><thead><tr><th>Operación</th><th class="tr">Precio</th><th class="tr">Gastos</th><th class="tr">ROI bruto</th><th class="tr">ROI neto</th></tr></thead><tbody>`;
-  ops.forEach(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);h+=`<tr><td style="font-weight:600;font-size:12px">${o.ref||'—'}</td><td class="tr" style="font-size:12px">€${fmt(o.precio)}</td><td class="tr" style="font-size:12px;color:#7A4A0A">€${fmt(cn.totalGastos)}</td><td class="tr tb" style="font-size:12px;color:${rc(cn.roi)}">${pct(cn.roi)}</td><td class="tr tb" style="font-size:12px;color:${rc(cn.roiNeto)}">${pct(cn.roiNeto)}</td></tr>`;});
-  h+='</tbody></table>';el.innerHTML=h;
+  const ops=loadOps();const gastos=loadGastos();
+  document.getElementById('g_rentabilidad').innerHTML=ops.length?`<table class="dtable"><thead><tr><th>Operación</th><th class="tr">Precio</th><th class="tr">Gastos</th><th class="tr">ROI bruto</th><th class="tr">ROI neto</th></tr></thead><tbody>${ops.map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);return`<tr><td style="font-weight:600">${o.ref}</td><td class="tr">€${fmt(o.precio)}</td><td class="tr" style="color:#7A4A0A">€${fmt(cn.totalGastos)}</td><td class="tr tb" style="color:${rc(cn.roi)}">${pct(cn.roi)}</td><td class="tr tb" style="color:${rc(cn.roiNeto)}">${pct(cn.roiNeto)}</td></tr>`;}).join('')}</tbody></table>`:`<div class="empty" style="padding:14px 0"><div>Sin operaciones</div></div>`;
 }
 
+// ── NAVEGACIÓN ────────────────────────────────────────────────────────────────
 function showPage(name){
   document.querySelectorAll('.ni').forEach((b,i)=>{const ns=['dashboard','nueva','gastos','portfolio','comparativa','alertas'];b.classList.toggle('active',ns[i]===name);});
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -530,6 +900,9 @@ function showPage(name){
   if(name==='comparativa')rComp();
   if(name==='alertas')rAlerts();
 }
+
+function sbadge(s){if(s>=80)return`<span class="badge bok">✓ ${s}/100</span>`;if(s>=60)return`<span class="badge bwarn">~ ${s}/100</span>`;return`<span class="badge bdanger">⚠ ${s}/100</span>`;}
+function ebadge(e){const m={extrajudicial:'binfo',judicial:'bwarn',dual:'bok'};const l={extrajudicial:'Extrajudicial',judicial:'Judicial',dual:'Dual'};return`<span class="badge ${m[e]||'bgray'}">${l[e]||e}</span>`;}
 
 function rDash(){
   const ops=loadOps();const gastos=loadGastos();
@@ -546,83 +919,66 @@ function rDash(){
     <div class="kpi" style="--kc:${rm>=15?'#2A6E14':'#8A6A0A'}"><div class="kl">ROI neto medio</div><div class="kv" style="color:${rc(rm)}">${pct(rm)}</div></div>`;
   const est={extrajudicial:0,judicial:0,dual:0};ops.forEach(o=>{est[o.estrategia]=(est[o.estrategia]||0)+1;});const tot=ops.length||1;
   const cols={extrajudicial:'#185FA5',judicial:'#8A5A0A',dual:'#2A6E14'};const labs={extrajudicial:'Extrajudicial',judicial:'Judicial',dual:'Dual'};
-  let eH='';Object.entries(est).forEach(([k,v2])=>{eH+=`<div class="brow"><span class="blbl">${labs[k]}</span><div class="btrk"><div class="bfil" style="width:${Math.round(v2/tot*100)}%;background:${cols[k]}"></div></div><span class="bval">${v2}</span></div>`;});
-  document.getElementById('dash-est').innerHTML=ops.length?eH:`<div class="empty" style="padding:20px 0"><span class="eico" style="font-size:28px">📊</span><div>Sin datos</div></div>`;
+  document.getElementById('dash-est').innerHTML=ops.length?Object.entries(est).map(([k,v2])=>`<div class="brow"><span class="blbl">${labs[k]}</span><div class="btrk"><div class="bfil" style="width:${Math.round(v2/tot*100)}%;background:${cols[k]}"></div></div><span class="bval">${v2}</span></div>`).join(''):`<div class="empty" style="padding:16px 0"><div>Sin datos</div></div>`;
   const topR=[...ops].sort((a,b)=>{const ga=gastos.filter(g=>g.opRef===a.ref);const gb2=gastos.filter(g=>g.opRef===b.ref);return calcNeto(b,gb2).roiNeto-calcNeto(a,ga).roiNeto;}).slice(0,5);
   const mx=topR.length?Math.max(...topR.map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);return Math.abs(calcNeto(o,go).roiNeto);}),1):100;
-  let tH='';topR.forEach(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const w=Math.min(100,Math.abs(cn.roiNeto)/mx*100);tH+=`<div class="brow"><span class="blbl">${o.ref||'—'}</span><div class="btrk"><div class="bfil" style="width:${Math.round(w)}%;background:${rc(cn.roiNeto)}"></div></div><span class="bval" style="color:${rc(cn.roiNeto)}">${pct(cn.roiNeto)}</span></div>`;});
-  document.getElementById('dash-top').innerHTML=ops.length?tH:`<div class="empty" style="padding:20px 0"><span class="eico" style="font-size:28px">🏆</span><div>Sin datos</div></div>`;
-  let uH='';[...ops].reverse().slice(0,5).forEach(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const s=o.score||score(o,cn);uH+=`<div class="oprow"><div class="opico">🏢</div><div style="flex:1"><div class="opname">${o.ref||'—'}${o.docs&&o.docs.length?` <span class="badge bgray" style="font-size:9px;margin-left:4px">📄 ${o.docs.length}</span>`:''}</div><div class="opsub">€${fmt(o.capital)} nominal · ROI neto ${pct(cn.roiNeto)}${go.length?` · €${fmt(cn.totalGastos)} gastos`:''}</div></div>${ebadge(o.estrategia)}${sbadge(s)}</div>`;});
-  document.getElementById('dash-rec').innerHTML=ops.length?uH:`<div class="empty"><span class="eico">📭</span><div>Sin operaciones aún</div><div style="font-size:12px;margin-top:6px">Añade tu primera operación en "Nueva operación"</div></div>`;
+  document.getElementById('dash-top').innerHTML=topR.length?topR.map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const w=Math.min(100,Math.abs(cn.roiNeto)/mx*100);return`<div class="brow"><span class="blbl">${o.ref}</span><div class="btrk"><div class="bfil" style="width:${Math.round(w)}%;background:${rc(cn.roiNeto)}"></div></div><span class="bval" style="color:${rc(cn.roiNeto)}">${pct(cn.roiNeto)}</span></div>`;}).join(''):`<div class="empty" style="padding:16px 0"><div>Sin datos</div></div>`;
+  document.getElementById('dash-rec').innerHTML=ops.length?[...ops].reverse().slice(0,4).map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const s=o.score||score(o,cn);return`<div class="op-card" onclick="abrirFicha('${o.id}')"><div class="op-card-header"><div><div style="font-size:14px;font-weight:700;color:#0A1628">${o.ref}</div><div style="font-size:11px;color:#8A9BB0;margin-top:2px">${o.direccion?o.direccion.split(',')[0]+' · ':''}${new Date(o.fecha).toLocaleDateString('es-ES')}</div></div><div style="display:flex;gap:6px;align-items:center">${ebadge(o.estrategia)}${sbadge(s)}</div></div><div class="op-card-metrics"><div class="op-card-metric"><div class="op-card-metric-val" style="color:${rc(cn.roi)}">${pct(cn.roi)}</div><div class="op-card-metric-lbl">ROI bruto</div></div><div class="op-card-metric"><div class="op-card-metric-val" style="color:${rc(cn.roiNeto)}">${pct(cn.roiNeto)}</div><div class="op-card-metric-lbl">ROI neto</div></div><div class="op-card-metric"><div class="op-card-metric-val">€${fmt(o.precio)}</div><div class="op-card-metric-lbl">Precio</div></div><div class="op-card-metric"><div class="op-card-metric-val">${pct(cn.ltv)}</div><div class="op-card-metric-lbl">LTV</div></div></div></div>`;}).join(''):`<div class="empty"><div style="font-size:36px;opacity:.2;margin-bottom:10px">📭</div><div>Sin operaciones</div></div>`;
 }
 
 function rPort(filtro){
   const ops=loadOps();const gastos=loadGastos();
   const fil=filtro==='todas'?ops:ops.filter(o=>o.estrategia===filtro);
-  if(!fil.length){document.getElementById('port-tabla').innerHTML=`<div class="empty" style="padding:32px 0"><span class="eico">📭</span><div>Sin operaciones</div></div>`;return;}
-  let h=`<table class="dtable"><thead><tr><th>Referencia</th><th>Estrategia</th><th class="tr">Nominal</th><th class="tr">Precio</th><th class="tr">Gastos</th><th class="tr">ROI neto</th><th class="tr">TIR</th><th>Score</th><th></th></tr></thead><tbody>`;
-  fil.forEach(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const s=o.score||score(o,cn);h+=`<tr><td><div style="font-weight:600;font-size:12px">${o.ref||'—'}</div><div style="font-size:10px;color:#8A9BB0">${new Date(o.fecha).toLocaleDateString('es-ES')}</div></td><td>${ebadge(o.estrategia)}</td><td class="tr" style="font-size:12px">€${fmt(o.capital)}</td><td class="tr" style="font-size:12px">€${fmt(o.precio)}</td><td class="tr" style="font-size:12px;color:#7A4A0A">€${fmt(cn.totalGastos)}</td><td class="tr tb" style="color:${rc(cn.roiNeto)};font-size:12px">${pct(cn.roiNeto)}</td><td class="tr" style="font-size:12px">${pct(cn.tirNeto)}</td><td>${sbadge(s)}</td><td><button class="btn btn-out btn-xs" onclick="delOp('${o.id}',event)">🗑</button></td></tr>`;});
-  h+='</tbody></table>';document.getElementById('port-tabla').innerHTML=h;
+  document.getElementById('port-cards').innerHTML=fil.length?fil.map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const s=o.score||score(o,cn);const n=calcNegociacion(o,calc(o),s);return`<div class="op-card" onclick="abrirFicha('${o.id}')"><div class="op-card-header"><div><div style="font-size:15px;font-weight:700;color:#0A1628">${o.ref}</div><div style="font-size:11px;color:#8A9BB0;margin-top:2px">${o.direccion?o.direccion.split(',')[0]+' · ':''}${o.tipo_inmueble||''}${o.metros?' · '+o.metros+'m²':''}</div></div><div style="display:flex;gap:6px;align-items:center">${ebadge(o.estrategia)}${sbadge(s)}</div></div><div class="op-card-metrics"><div class="op-card-metric"><div class="op-card-metric-val" style="color:${rc(cn.roiNeto)}">${pct(cn.roiNeto)}</div><div class="op-card-metric-lbl">ROI neto</div></div><div class="op-card-metric"><div class="op-card-metric-val">€${fmt(o.precio)}</div><div class="op-card-metric-lbl">Precio</div></div><div class="op-card-metric"><div class="op-card-metric-val" style="color:#185FA5">€${fmt(n.primeraOferta)}</div><div class="op-card-metric-lbl">1ª oferta</div></div><div class="op-card-metric"><div class="op-card-metric-val">${pct(cn.ltv)}</div><div class="op-card-metric-lbl">LTV</div></div></div></div>`;}).join(''):`<div class="empty" style="padding:40px"><div style="font-size:36px;opacity:.2;margin-bottom:10px">📭</div><div>Sin operaciones</div></div>`;
 }
 function filtrar(f,btn){document.querySelectorAll('.ftab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');rPort(f);}
-function delOp(id,e){e.stopPropagation();if(!confirm('¿Eliminar esta operación?'))return;let ops=loadOps();ops=ops.filter(o=>o.id!==id);saveOps(ops);rPort('todas');updatePill();}
 
 function rComp(){
   const ops=loadOps();const gastos=loadGastos();
-  if(!ops.length){document.getElementById('comp-tab').innerHTML=`<div class="empty"><span class="eico">📊</span><div>Sin operaciones</div></div>`;document.getElementById('comp-roi').innerHTML='';document.getElementById('comp-ltv').innerHTML='';return;}
-  let tbl=`<div style="overflow-x:auto"><table class="dtable" style="min-width:560px"><thead><tr><th>Operación</th><th class="tr">Precio</th><th class="tr">Gastos</th><th class="tr">V.neto</th><th class="tr">ROI neto</th><th class="tr">TIR neta</th><th class="tr">LTV</th><th>Score</th></tr></thead><tbody>`;
-  ops.forEach(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const s=o.score||score(o,cn);tbl+=`<tr><td style="font-weight:600;font-size:12px">${o.ref||'—'}</td><td class="tr" style="font-size:12px">€${fmt(o.precio)}</td><td class="tr" style="font-size:12px;color:#7A4A0A">€${fmt(cn.totalGastos)}</td><td class="tr" style="font-size:12px">€${fmt(cn.vn)}</td><td class="tr tb" style="color:${rc(cn.roiNeto)};font-size:12px">${pct(cn.roiNeto)}</td><td class="tr" style="font-size:12px">${pct(cn.tirNeto)}</td><td class="tr" style="font-size:12px">${pct(cn.ltv)}</td><td>${sbadge(s)}</td></tr>`;});
-  tbl+='</tbody></table></div>';document.getElementById('comp-tab').innerHTML=tbl;
+  if(!ops.length){['comp-tab','comp-roi','comp-ltv'].forEach(id=>document.getElementById(id).innerHTML=`<div class="empty"><div>Sin operaciones</div></div>`);return;}
+  document.getElementById('comp-tab').innerHTML=`<div style="overflow-x:auto"><table class="dtable" style="min-width:560px"><thead><tr><th>Operación</th><th>Dirección</th><th class="tr">Precio</th><th class="tr">1ª Oferta</th><th class="tr">ROI neto</th><th class="tr">TIR</th><th class="tr">LTV</th><th>Score</th></tr></thead><tbody>${ops.map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const s=o.score||score(o,cn);const n=calcNegociacion(o,calc(o),s);return`<tr onclick="abrirFicha('${o.id}')" style="cursor:pointer"><td style="font-weight:600">${o.ref}</td><td style="font-size:11px;color:#4A5568;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.direccion?o.direccion.split(',')[0]:'—'}</td><td class="tr">€${fmt(o.precio)}</td><td class="tr" style="color:#185FA5">€${fmt(n.primeraOferta)}</td><td class="tr tb" style="color:${rc(cn.roiNeto)}">${pct(cn.roiNeto)}</td><td class="tr">${pct(cn.tirNeto)}</td><td class="tr">${pct(cn.ltv)}</td><td>${sbadge(s)}</td></tr>`;}).join('')}</tbody></table></div>`;
   const mxR=Math.max(...ops.map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);return Math.abs(calcNeto(o,go).roiNeto);}),1);
-  let rH='';ops.forEach(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const w=Math.min(100,Math.abs(cn.roiNeto)/mxR*100);rH+=`<div class="brow"><span class="blbl">${o.ref||'—'}</span><div class="btrk"><div class="bfil" style="width:${Math.round(w)}%;background:${rc(cn.roiNeto)}"></div></div><span class="bval" style="color:${rc(cn.roiNeto)}">${pct(cn.roiNeto)}</span></div>`;});
-  document.getElementById('comp-roi').innerHTML=rH;
+  document.getElementById('comp-roi').innerHTML=ops.map(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const w=Math.min(100,Math.abs(cn.roiNeto)/mxR*100);return`<div class="brow" style="cursor:pointer" onclick="abrirFicha('${o.id}')"><span class="blbl">${o.ref}</span><div class="btrk"><div class="bfil" style="width:${Math.round(w)}%;background:${rc(cn.roiNeto)}"></div></div><span class="bval" style="color:${rc(cn.roiNeto)}">${pct(cn.roiNeto)}</span></div>`;}).join('');
   const mxL=Math.max(...ops.map(o=>calc(o).ltv),1);
-  let lH='';ops.forEach(o=>{const c=calc(o);const w=Math.min(100,c.ltv/mxL*100);const lc=c.ltv<70?'#2A6E14':c.ltv<90?'#8A5A0A':'#8A1818';lH+=`<div class="brow"><span class="blbl">${o.ref||'—'}</span><div class="btrk"><div class="bfil" style="width:${Math.round(w)}%;background:${lc}"></div></div><span class="bval">${pct(c.ltv)}</span></div>`;});
-  document.getElementById('comp-ltv').innerHTML=lH;
+  document.getElementById('comp-ltv').innerHTML=ops.map(o=>{const c=calc(o);const w=Math.min(100,c.ltv/mxL*100);const lc=c.ltv<70?'#2A6E14':c.ltv<90?'#8A5A0A':'#8A1818';return`<div class="brow" style="cursor:pointer" onclick="abrirFicha('${o.id}')"><span class="blbl">${o.ref}</span><div class="btrk"><div class="bfil" style="width:${Math.round(w)}%;background:${lc}"></div></div><span class="bval">${pct(c.ltv)}</span></div>`;}).join('');
 }
 
 function rAlerts(){
   const ops=loadOps();const gastos=loadGastos();let al=[];
   ops.forEach(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);
-    if(o.clausulas==='pendiente')al.push({op:o.ref,niv:'danger',txt:'Incidente de abusividad pendiente — no adquirir hasta resolución firme'});
-    if(o.tipo==='hipotecario_primera'&&o.vulnerabilidad!=='no')al.push({op:o.ref,niv:'danger',txt:'Vulnerabilidad en 1ª vivienda — riesgo suspensión lanzamiento (Ley 12/2023)'});
-    if(cn.rs<0)al.push({op:o.ref,niv:'warn',txt:`ROI negativo en estrés (${pct(cn.rs)}) — revisar precio`});
-    if(o.precio>cn.pm)al.push({op:o.ref,niv:'warn',txt:`Precio €${fmt(o.precio)} supera máximo recomendado €${fmt(cn.pm)}`});
-    if(cn.roiNeto<cn.roi*0.7&&cn.totalGastos>0)al.push({op:o.ref,niv:'warn',txt:`Gastos (€${fmt(cn.totalGastos)}) erosionan el ROI de ${pct(cn.roi)} a ${pct(cn.roiNeto)}`});
-    if(o.epi==='alto')al.push({op:o.ref,niv:'warn',txt:'Perfil EPI alto — riesgo plan de pagos con quita (art. 497 TRLC)'});
-    if(cn.ltv>90)al.push({op:o.ref,niv:'warn',txt:`LTV ${pct(cn.ltv)} — colchón de valor insuficiente`});
-    if(o.ocupacion==='arrendado_anterior')al.push({op:o.ref,niv:'warn',txt:'Arrendamiento anterior a hipoteca — no se extingue con la ejecución'});
+    if(o.clausulas==='pendiente')al.push({op:o.ref,id:o.id,niv:'danger',txt:'Incidente de abusividad pendiente — no adquirir'});
+    if(o.tipo==='hipotecario_primera'&&o.vulnerabilidad!=='no')al.push({op:o.ref,id:o.id,niv:'danger',txt:'Vulnerabilidad en 1ª vivienda — riesgo suspensión lanzamiento'});
+    if(cn.rs<0)al.push({op:o.ref,id:o.id,niv:'warn',txt:`ROI negativo en estrés (${pct(cn.rs)})`});
+    if(o.precio>cn.pm)al.push({op:o.ref,id:o.id,niv:'warn',txt:`Precio supera máximo recomendado`});
+    if(cn.roiNeto<cn.roi*0.7&&cn.totalGastos>0)al.push({op:o.ref,id:o.id,niv:'warn',txt:`Gastos erosionan ROI: ${pct(cn.roi)} → ${pct(cn.roiNeto)}`});
+    if(o.epi==='alto')al.push({op:o.ref,id:o.id,niv:'warn',txt:'EPI alto — riesgo plan de pagos con quita'});
+    if(cn.ltv>90)al.push({op:o.ref,id:o.id,niv:'warn',txt:`LTV ${pct(cn.ltv)} — colchón insuficiente`});
   });
-  if(!al.length){document.getElementById('alertas-lista').innerHTML=`<div class="arow" style="background:#EBF7E2;border-radius:10px"><div style="font-size:20px">✅</div><div style="font-size:13px;color:#2A5E12;font-weight:600">Sin alertas activas — portfolio saneado</div></div>`;return;}
-  let h='';al.forEach(a=>{const bg=a.niv==='danger'?'#FEECEC':'#FEF3E2';const tc=a.niv==='danger'?'#7A1A1A':'#7A4A0A';const ico=a.niv==='danger'?'🔴':'🟡';h+=`<div class="arow" style="background:${bg};border-radius:10px;margin-bottom:8px"><div style="font-size:18px">${ico}</div><div><div style="font-size:10px;font-weight:700;color:${tc};text-transform:uppercase;letter-spacing:.05em">${a.op}</div><div style="font-size:13px;color:${tc};margin-top:2px">${a.txt}</div></div></div>`;});
-  document.getElementById('alertas-lista').innerHTML=h;
+  document.getElementById('alertas-lista').innerHTML=al.length?al.map(a=>{const bg=a.niv==='danger'?'#FEECEC':'#FEF3E2';const tc=a.niv==='danger'?'#7A1A1A':'#7A4A0A';const ico=a.niv==='danger'?'🔴':'🟡';return`<div class="arow" style="background:${bg};border-radius:10px;margin-bottom:8px;cursor:pointer" onclick="abrirFicha('${a.id}')"><div style="font-size:18px">${ico}</div><div style="flex:1"><div style="font-size:10px;font-weight:700;color:${tc};text-transform:uppercase;letter-spacing:.05em">${a.op}</div><div style="font-size:13px;color:${tc};margin-top:2px">${a.txt}</div></div><div style="font-size:11px;color:${tc};opacity:.6">Ver →</div></div>`;}).join(''):`<div class="arow" style="background:#EBF7E2;border-radius:10px"><div style="font-size:20px">✅</div><div style="font-size:13px;color:#2A5E12;font-weight:600">Sin alertas activas — portfolio saneado</div></div>`;
 }
 
 function updatePill(){
   const ops=loadOps();const gastos=loadGastos();let n=0;
   ops.forEach(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);if(o.clausulas==='pendiente')n++;if(o.tipo==='hipotecario_primera'&&o.vulnerabilidad!=='no')n++;if(cn.rs<0)n++;if(o.precio>cn.pm)n++;});
-  const p=document.getElementById('alert-pill');if(n>0){p.style.display='flex';document.getElementById('alert-count').textContent=n;}else{p.style.display='none';}
+  const p=document.getElementById('alert-pill');if(n>0){p.style.display='flex';document.getElementById('alert-count').textContent=n;}else p.style.display='none';
 }
 
 function exportarDictamen(){
-  const ops=loadOps();const gastos=loadGastos();if(!ops.length)return;
-  const o=ops[ops.length-1];const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);const s=o.score||score(o,cn);
-  const linGastos=go.length?go.map(g=>`  ${g.nombre.padEnd(30)} €${fmt(g.importe)}`).join('\n'):'  Sin gastos registrados';
-  const txt=`NPL INVEST — DICTAMEN DE OPERACIÓN\n${'='.repeat(40)}\nReferencia: ${o.ref}\nFecha: ${new Date(o.fecha).toLocaleDateString('es-ES')}\nEstrategia: ${o.estrategia}\nDocumentos: ${o.docs&&o.docs.length?o.docs.join(', '):'Ninguno'}\n\nRESUMEN FINANCIERO\n${'-'.repeat(30)}\nCapital pendiente:     €${fmt(o.capital)}\nPrecio de compra:      €${fmt(o.precio)}\nGastos totales:        €${fmt(cn.totalGastos)}\nValor neto realizable: €${fmt(cn.vn)}\nROI bruto:             ${pct(cn.roi)}\nROI neto (con gastos): ${pct(cn.roiNeto)}\nTIR neta anualizada:   ${pct(cn.tirNeto)}\nROI escenario estrés:  ${pct(cn.rs)}\nLTV sobre mercado:     ${pct(cn.ltv)}\nPrecio máx. rec.:      €${fmt(cn.pm)}\nPuntuación:            ${s}/100\n\nDETALLE DE GASTOS\n${'-'.repeat(30)}\n${linGastos}\n\n${o.ai_dictamen||'Sin dictamen generado'}`;
-  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`dictamen-${o.ref||'npl'}.txt`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  const ops=loadOps();if(!ops.length)return;
+  exportarDictamenOp(ops[ops.length-1].id);
 }
 
 function limpiarForm(){
-  ['n_ref','n_cap','n_int','n_fecha','n_pre','n_tas','n_mer','n_car','n_cap2','n_mes','n_obs'].forEach(id=>{const e=document.getElementById(id);if(e){e.value='';e.classList.remove('ai-filled');}});
+  ['n_ref','n_cap','n_int','n_fecha','n_pre','n_tas','n_mer','n_car','n_cap2','n_mes','n_obs','n_direccion','n_metros','n_habitaciones','n_planta','n_banos'].forEach(id=>{const e=document.getElementById(id);if(e){e.value='';e.classList.remove('ai-filled');}});
   curDocs=[];renderDocChips();
-  document.getElementById('extract-banner').style.display='none';
-  document.getElementById('extract-status').style.display='none';
-  document.getElementById('docs-count-badge').style.display='none';
-  document.getElementById('filled-badge').style.display='none';
-  document.getElementById('drop-zone').innerHTML=`<span class="drop-eico">📂</span><div class="drop-title">Arrastra o haz clic para subir</div><div class="drop-sub">Escritura · Nota simple · Auto · Certificación · Tasación · PDF o imagen</div>`;
+  ['extract-banner','extract-status','docs-count-badge','filled-badge'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+  document.getElementById('drop-zone').innerHTML=`<div style="font-size:28px;margin-bottom:8px">📂</div><div style="font-size:13px;font-weight:600;color:#0F3D6E;margin-bottom:3px">Arrastra o haz clic para subir</div><div style="font-size:11px;color:#6B8FAA">Escritura · Nota simple · Auto · Certificación · Tasación</div>`;
   document.getElementById('n_resultado').style.display='none';
   document.getElementById('n_placeholder').style.display='block';
 }
+
+// Cerrar modal con ESC
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 populateOpSelects();updatePill();rDash();
 document.getElementById('g_fecha').value=new Date().toISOString().split('T')[0];
