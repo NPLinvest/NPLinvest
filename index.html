@@ -1275,25 +1275,33 @@ function generarDictamen(d,c,sc){
 // ── RENDER FICHA FISCAL ───────────────────────────────────────────────────────
 function renderFiscal(d,gastos,containerId){
   const cantObtenida=d.cantidadObtenida||0;
-  if(!d.finalizada||!cantObtenida){
-    document.getElementById(containerId).innerHTML=`
-      <div class="finalizar-banner">
-        <div style="font-size:10px;font-weight:600;color:#6B21A8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">💰 Registrar cantidad obtenida y cerrar operación</div>
-        <div class="g2" style="gap:8px;margin-bottom:10px">
-          <div class="field"><label>Tipo de cobro</label><select id="fin-tipocobro"><option value="venta">Venta del inmueble</option><option value="cobro_deudor">Cobro al deudor</option><option value="mixto">Mixto (venta + cobro)</option></select></div>
-          <div class="field"><label>Cantidad total obtenida (€)</label><input type="number" id="fin-cantidad" placeholder="150000"></div>
-        </div>
-        <div class="g2" style="gap:8px;margin-bottom:10px">
-          <div class="field"><label>Figura fiscal</label><select id="fin-figura"><option value="ambos">IS y IRPF (comparativa)</option><option value="is">IS — Impuesto de Sociedades</option><option value="irpf">IRPF — Persona física</option></select></div>
-          <div class="field"><label>Fecha de cierre</label><input type="date" id="fin-fecha" value="${new Date().toISOString().split('T')[0]}"></div>
-        </div>
-        <button class="btn btn-purple btn-sm" style="width:100%" onclick="finalizarOp('${d.id}','${d.tipoOp||'inversion'}')">✅ Finalizar operación y calcular resultado fiscal</button>
-      </div>`;
+
+  // Bloque simulador (siempre visible si no finalizada, o como botón "recalcular" si finalizada)
+  const simBanner=`
+    <div class="${d.finalizada?'':'finalizar-banner'}" style="${d.finalizada?'background:#F5F0FF;border:1px solid #C4B5FD;border-radius:10px;padding:13px 15px;margin-bottom:12px':''}">
+      <div style="font-size:10px;font-weight:600;color:${d.finalizada?'#6B21A8':'#6B21A8'};text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">${d.finalizada?'🔄 Recalcular con otro escenario':'💰 Simulador de venta'}</div>
+      <div class="g2" style="gap:8px;margin-bottom:10px">
+        <div class="field"><label>Tipo de cobro</label><select id="fin-tipocobro"><option value="venta">Venta del inmueble</option><option value="cobro_deudor">Cobro al deudor</option><option value="mixto">Mixto (venta + cobro)</option></select></div>
+        <div class="field"><label>Cantidad a simular (€)</label><input type="number" id="fin-cantidad" placeholder="150000" value="${cantObtenida||''}"></div>
+      </div>
+      <div class="g2" style="gap:8px;margin-bottom:10px">
+        <div class="field"><label>Figura fiscal</label><select id="fin-figura"><option value="ambos">IS y IRPF (comparativa)</option><option value="is">IS — Impuesto de Sociedades</option><option value="irpf">IRPF — Persona física</option></select></div>
+        <div class="field"><label>Fecha de cierre</label><input type="date" id="fin-fecha" value="${new Date().toISOString().split('T')[0]}"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-purple btn-sm" style="flex:1" onclick="simularVenta('${d.id}','${d.tipoOp||'inversion'}')">📊 Calcular resultado</button>
+        ${!d.finalizada?`<button class="btn btn-green btn-sm" style="flex:1" onclick="finalizarOp('${d.id}','${d.tipoOp||'inversion'}')">✅ Marcar como finalizada</button>`:`<button class="btn btn-out btn-sm" onclick="reabrirOp('${d.id}','${d.tipoOp||'inversion'}')">↩ Reabrir operación</button>`}
+      </div>
+      ${d.finalizada?`<div style="margin-top:8px;padding:6px 10px;background:#EBF7E2;border-radius:6px;font-size:11px;color:#2A5E12">✅ Finalizada el ${d.fechaCierre?new Date(d.fechaCierre).toLocaleDateString('es-ES'):''} · Cantidad real: €${fmt(cantObtenida)}</div>`:''}
+    </div>`;
+
+  if(!cantObtenida){
+    document.getElementById(containerId).innerHTML=simBanner;
     return;
   }
   const f=calcFiscal(d,gastos,cantObtenida);
   const ccaaLabel=f.ccaa?f.ccaa.replace(/-/g,' ').replace(/\b\w/g,l=>l.toUpperCase()):'Genérica';
-  document.getElementById(containerId).innerHTML=`
+  document.getElementById(containerId).innerHTML=simBanner+`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
     <div>
       <div style="font-size:11px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">IS — Impuesto de Sociedades (25%)</div>
@@ -1450,10 +1458,58 @@ function switchTab(name,btn){
   if(name==='inmueble')setTimeout(()=>mapInst&&mapInst.invalidateSize(),300);
 }
 
-// ── FINALIZAR OPERACIÓN ───────────────────────────────────────────────────────
+// ── SIMULAR VENTA (sin marcar como finalizada) ────────────────────────────────
+function simularVenta(id,col){
+  const cantidad=parseFloat(document.getElementById('fin-cantidad')?.value)||0;
+  if(!cantidad){alert('Introduce la cantidad a simular');return;}
+  const tipoCobro=document.getElementById('fin-tipocobro')?.value||'venta';
+  const lista=col==='inversion'?loadInv():loadEst();
+  const d=lista.find(o=>o.id===id);if(!d)return;
+  const gastos=loadGastos().filter(g=>g.opRef===d.ref);
+  // Simular sin guardar — usar cantidadObtenida temporal solo para el cálculo
+  const dSim={...d,cantidadObtenida:cantidad,tipoCobro,finalizada:true};
+  const f=calcFiscal(dSim,gastos,cantidad);
+  const ccaaLabel=f.ccaa?f.ccaa.replace(/-/g,' ').replace(/\w/g,l=>l.toUpperCase()):'Genérica';
+  const cont=document.getElementById('ft-fiscal-inner');
+  if(!cont)return;
+  const simLabel=`<div style="margin-bottom:10px;padding:8px 12px;background:#F5F0FF;border:0.5px solid #C4B5FD;border-radius:8px;font-size:12px;color:#6B21A8">📊 <strong>Simulación</strong> — cantidad: €${fmt(cantidad)} · tipo: ${tipoCobro} · <span style="opacity:.7">La operación sigue abierta hasta que la marques como finalizada</span></div>`;
+  cont.innerHTML=simLabel+`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:11px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">IS — Impuesto de Sociedades (25%)</div>
+      <div class="fiscal-box">
+        <div class="fiscal-row"><span style="color:#8A9BB0">Cantidad simulada</span><span class="tb">€${fmt(f.cantidadObtenida)}</span></div>
+        <div class="fiscal-row"><span style="color:#8A9BB0">Precio de compra</span><span style="color:#7A1A1A">− €${fmt(f.precio)}</span></div>
+        ${!f.yaHayITP?`<div class="fiscal-row"><span style="color:#8A9BB0">ITP (${f.itpPct}% · ${ccaaLabel})</span><span style="color:#7A1A1A">− €${fmt(f.itpImporte)}</span></div>`:''}
+        <div class="fiscal-row"><span style="color:#8A9BB0">Otros gastos</span><span style="color:#7A1A1A">− €${fmt(f.totalGastos)}</span></div>
+        <div class="fiscal-row total"><span>Base imponible</span><span>€${fmt(f.baseImponible)}</span></div>
+        <div class="fiscal-row impuesto"><span>Cuota IS (25%)</span><span style="color:#7A4A0A">− €${fmt(f.cuotaIS)}</span></div>
+        <div class="fiscal-row beneficio"><span>${f.beneficioIS>=0?'✅':'❌'} Beneficio neto IS</span><span style="color:${f.beneficioIS>=0?'#2A5E12':'#7A1A1A'}">€${fmt(f.beneficioIS)}</span></div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">IRPF — Persona física (escala 2024)</div>
+      <div class="fiscal-box">
+        <div class="fiscal-row"><span style="color:#8A9BB0">Cantidad simulada</span><span class="tb">€${fmt(f.cantidadObtenida)}</span></div>
+        <div class="fiscal-row"><span style="color:#8A9BB0">Precio de compra</span><span style="color:#7A1A1A">− €${fmt(f.precio)}</span></div>
+        ${!f.yaHayITP?`<div class="fiscal-row"><span style="color:#8A9BB0">ITP (${f.itpPct}% · ${ccaaLabel})</span><span style="color:#7A1A1A">− €${fmt(f.itpImporte)}</span></div>`:''}
+        <div class="fiscal-row"><span style="color:#8A9BB0">Otros gastos</span><span style="color:#7A1A1A">− €${fmt(f.totalGastos)}</span></div>
+        <div class="fiscal-row total"><span>Base imponible</span><span>€${fmt(f.baseImponible)}</span></div>
+        <div class="fiscal-row impuesto"><span>Cuota IRPF (progresiva)</span><span style="color:#7A4A0A">− €${fmt(f.cuotaIRPF)}</span></div>
+        <div class="fiscal-row beneficio"><span>${f.beneficioIRPF>=0?'✅':'❌'} Beneficio neto IRPF</span><span style="color:${f.beneficioIRPF>=0?'#2A5E12':'#7A1A1A'}">€${fmt(f.beneficioIRPF)}</span></div>
+      </div>
+    </div>
+    </div>
+    <div style="margin-top:12px;padding:10px 13px;background:#F7F9FC;border-radius:8px;font-size:12px;color:#6B7E96">
+      ITP calculado automáticamente para <strong>${ccaaLabel}</strong> (${f.itpPct}%). ${f.yaHayITP?'Ya incluido en gastos registrados.':'Añadido a costes deducibles.'}
+    </div>`;
+}
+
+// ── FINALIZAR OPERACIÓN (marca como cerrada definitivamente) ──────────────────
 function finalizarOp(id,col){
   const cantidad=parseFloat(document.getElementById('fin-cantidad')?.value)||0;
-  if(!cantidad){alert('Introduce la cantidad obtenida');return;}
+  if(!cantidad){alert('Introduce la cantidad obtenida real para cerrar la operación');return;}
+  if(!confirm(`¿Marcar como finalizada con €${cantidad.toLocaleString('es-ES')} obtenidos? Podrás reabrirla si es necesario.`))return;
   const tipoCobro=document.getElementById('fin-tipocobro')?.value||'venta';
   const fechaCierre=document.getElementById('fin-fecha')?.value||new Date().toISOString().split('T')[0];
   const lista=col==='inversion'?loadInv():loadEst();
@@ -1462,6 +1518,20 @@ function finalizarOp(id,col){
   lista[idx].cantidadObtenida=cantidad;
   lista[idx].tipoCobro=tipoCobro;
   lista[idx].fechaCierre=fechaCierre;
+  if(col==='inversion')saveInv(lista);else saveEst(lista);
+  abrirFicha(id,col);
+  rDash();updatePill();
+}
+
+// ── REABRIR OPERACIÓN ─────────────────────────────────────────────────────────
+function reabrirOp(id,col){
+  if(!confirm('¿Reabrir esta operación? Se mantendrán todos los datos pero dejará de contabilizar como finalizada en el dashboard.'))return;
+  const lista=col==='inversion'?loadInv():loadEst();
+  const idx=lista.findIndex(o=>o.id===id);if(idx<0)return;
+  lista[idx].finalizada=false;
+  lista[idx].cantidadObtenida=null;
+  lista[idx].tipoCobro=null;
+  lista[idx].fechaCierre=null;
   if(col==='inversion')saveInv(lista);else saveEst(lista);
   abrirFicha(id,col);
   rDash();updatePill();
