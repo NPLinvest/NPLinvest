@@ -91,6 +91,7 @@ Responde ÚNICAMENTE con un objeto JSON con exactamente estas claves (usa null s
   "tipo_inmueble": "piso" | "atico" | "bajo" | "bajo_jardin" | "local" | "chalet" | "solar",
   "fase": "prejudicial" | "monitorio" | "ejecucion_admitida" | "tasacion_hecha" | "subasta_senalada",
   "clausulas": "si" | "no_revisadas" | "pendiente",
+  "vivienda_habitual_deudor": true | false | null (ver instrucciones específicas más abajo),
   "observaciones": string (máximo 150 palabras con hallazgos clave: cláusulas detectadas, estado del inmueble, deudor, riesgos jurídicos identificados)
 }
 
@@ -101,6 +102,11 @@ Instrucciones específicas:
 - Si el documento es una nota simple, extrae las cargas anteriores a la hipoteca objeto de estudio.
 - Si hay cláusulas suelo, intereses de demora elevados o vencimiento anticipado agresivo, indícalo en observaciones y pon clausulas: "pendiente".
 - Si la vivienda aparece como habitual del deudor, pon tipo: "hipotecario_primera".
+- Para "vivienda_habitual_deudor": marca true si encuentras CUALQUIERA de estos dos indicios (no es necesario que coincidan ambos):
+  (a) el documento declara expresamente que el inmueble es la "vivienda habitual" del deudor/hipotecante (p. ej. en la escritura, en la demanda de ejecución, o en cualquier otra resolución); o
+  (b) el domicilio del deudor que consta para notificaciones (en la escritura, demanda o DNI si aparece) coincide con la dirección de la finca hipotecada.
+  Marca false si el documento indica expresamente que NO es vivienda habitual (segunda residencia, inmueble vacío, arrendado a tercero, o domicilio del deudor distinto al de la finca).
+  Marca null si no hay ningún indicio en ninguno de los dos sentidos.
 
 No incluyas nada más que el JSON. Sin explicaciones, sin markdown, sin backticks.`;
 
