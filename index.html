@@ -169,7 +169,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="ni" onclick="showPage('inversiones')">💼 Inversiones</div>
   <div class="ni" onclick="showPage('estudio')">🔍 En estudio</div>
   <div class="ni" onclick="showPage('alertas')">🔔 Alertas</div>
-  <div class="ni" onclick="showPage('juzgados')">⚖️ Juzgados</div>
+  <div class="ni" onclick="showPage('tareas')">✅ Tareas</div>
   <div class="ni" onclick="showPage('juzgados')">⚖️ Juzgados</div>
 </div>
 <div class="body">
@@ -223,6 +223,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="panel"><div id="alertas-lista"></div></div>
 </div>
 
+<!-- TAREAS -->
+<div id="page-tareas" class="page">
+  <div class="ph"><div class="pt">Tareas pendientes</div><div class="ps">Recordatorios generados a partir de resoluciones judiciales de todas las operaciones</div></div>
+  <div class="panel"><div id="tareas-lista"></div></div>
+</div>
+
 <!-- JUZGADOS -->
 <div id="page-juzgados" class="page">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -250,6 +256,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <tbody id="j-tbody"></tbody>
     </table>
   </div>
+  <div class="panel" style="border-color:#9DCAF0;background:#F7FBFF;margin-top:16px">
+    <div class="phead" style="border-bottom-color:#D0E8F8"><span class="ptitle" style="color:#185FA5">💾 Copia de seguridad de toda la plataforma</span></div>
+    <div style="font-size:12px;color:#4A7A9B;margin-bottom:12px;line-height:1.6">Exporta todos tus datos (inversiones, estudios, gastos, juzgados, resoluciones y tareas) a un archivo. Útil para cambiar de ordenador o como copia de seguridad — los datos viven solo en este navegador.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-blue btn-sm" onclick="exportarTodo()">⬇ Exportar todos los datos</button>
+      <button class="btn btn-out btn-sm" onclick="document.getElementById('import-file').click()">⬆ Importar datos</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importarTodo(this.files[0])">
+    </div>
+    <div id="import-status" style="display:none;font-size:12px;margin-top:10px;padding:8px 12px;border-radius:7px"></div>
+  </div>
 </div>
 
 
@@ -268,13 +284,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="ft-negociacion" style="display:none"></div>
     <div id="ft-inmueble" style="display:none"></div>
     <div id="ft-gastos" style="display:none"></div>
+    <div id="ft-judicial" style="display:none"></div>
     <div id="ft-dictamen" style="display:none"></div>
   </div></div>
 </div>
 
 <script>
 // ── DATOS ─────────────────────────────────────────────────────────────────────
-const SK='npl_inv_v2';const EK='npl_est_v2';const GK='npl_gas_v2';const JK='npl_juzgados_v1';
+const SK='npl_inv_v2';const EK='npl_est_v2';const GK='npl_gas_v2';const JK='npl_juzgados_v1';const RK='npl_resoluciones_v1';const TK='npl_tareas_v1';
+
+function loadResoluciones(){try{return JSON.parse(localStorage.getItem(RK))||[]}catch(e){return[]}}
+function saveResoluciones(d){localStorage.setItem(RK,JSON.stringify(d))}
+function loadTareas(){try{return JSON.parse(localStorage.getItem(TK))||[]}catch(e){return[]}}
+function saveTareas(d){localStorage.setItem(TK,JSON.stringify(d))}
 
 // ── BASE DE JUZGADOS NPL ──────────────────────────────────────────────────────
 const JUZGADOS_DB={
@@ -315,7 +337,7 @@ function getPlazosJuzgado(juzgadoNombre,direccion){
   return{admision:6,subasta:22,total:30,fuente:'estimacion'};
 }
 
-let curDocs=[],curFormTipo='inversion',mapInst=null,addrTimer=null;
+let curDocs=[],curFormTipo='inversion',mapInst=null,addrTimer=null,editandoId=null,editandoCol=null;
 
 const fmt=x=>(parseFloat(x)||0).toLocaleString('es-ES',{maximumFractionDigits:0});
 const fmt2=x=>(parseFloat(x)||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -409,58 +431,6 @@ function calcNeto(d,go){
   const tn=(d.meses||12)>0?(Math.pow(1+rn/100,12/(d.meses||12))-1)*100:0;
   return{...c,totalGastos:tg,gnNeto:gn,roiNeto:rn,tirNeto:tn};
 }
-// ── BASE DE JUZGADOS ──────────────────────────────────────────────────────────
-const JUZGADOS_DB = {
-  "Madrid":["J. 1ª Instancia nº 1 Madrid","J. 1ª Instancia nº 2 Madrid","J. 1ª Instancia nº 3 Madrid","J. 1ª Instancia nº 4 Madrid","J. 1ª Instancia nº 5 Madrid","J. 1ª Instancia nº 6 Madrid","J. 1ª Instancia nº 7 Madrid","J. 1ª Instancia nº 8 Madrid","J. 1ª Instancia nº 9 Madrid","J. 1ª Instancia nº 10 Madrid","J. 1ª Instancia nº 11 Madrid","J. 1ª Instancia nº 12 Madrid","J. 1ª Instancia nº 13 Madrid","J. 1ª Instancia nº 14 Madrid","J. 1ª Instancia nº 15 Madrid","J. 1ª Instancia nº 16 Madrid","J. 1ª Instancia nº 17 Madrid","J. 1ª Instancia nº 18 Madrid","J. 1ª Instancia nº 19 Madrid","J. 1ª Instancia nº 20 Madrid","J. 1ª Instancia nº 21 Madrid","J. 1ª Instancia nº 22 Madrid","J. 1ª Instancia nº 23 Madrid","J. 1ª Instancia nº 24 Madrid","J. 1ª Instancia nº 25 Madrid","J. 1ª Instancia nº 26 Madrid","J. 1ª Instancia nº 27 Madrid","J. 1ª Instancia nº 28 Madrid","J. 1ª Instancia nº 29 Madrid","J. 1ª Instancia nº 30 Madrid","J. 1ª Instancia nº 31 Madrid","J. 1ª Instancia nº 32 Madrid","J. 1ª Instancia nº 1 Alcalá de Henares","J. 1ª Instancia nº 2 Alcalá de Henares","J. 1ª Instancia nº 3 Alcalá de Henares","J. 1ª Instancia nº 1 Móstoles","J. 1ª Instancia nº 2 Móstoles","J. 1ª Instancia nº 3 Móstoles","J. 1ª Instancia nº 1 Getafe","J. 1ª Instancia nº 2 Getafe","J. 1ª Instancia nº 1 Leganés","J. 1ª Instancia nº 2 Leganés","J. 1ª Instancia nº 1 Torrejón de Ardoz","J. 1ª Instancia nº 1 Fuenlabrada","J. 1ª Instancia nº 2 Fuenlabrada","J. 1ª Instancia nº 1 Collado Villalba"],
-  "Barcelona":["J. 1ª Instancia nº 1 Barcelona","J. 1ª Instancia nº 2 Barcelona","J. 1ª Instancia nº 3 Barcelona","J. 1ª Instancia nº 4 Barcelona","J. 1ª Instancia nº 5 Barcelona","J. 1ª Instancia nº 6 Barcelona","J. 1ª Instancia nº 7 Barcelona","J. 1ª Instancia nº 8 Barcelona","J. 1ª Instancia nº 9 Barcelona","J. 1ª Instancia nº 10 Barcelona","J. 1ª Instancia nº 11 Barcelona","J. 1ª Instancia nº 12 Barcelona","J. 1ª Instancia nº 13 Barcelona","J. 1ª Instancia nº 14 Barcelona","J. 1ª Instancia nº 15 Barcelona","J. 1ª Instancia nº 16 Barcelona","J. 1ª Instancia nº 1 Badalona","J. 1ª Instancia nº 2 Badalona","J. 1ª Instancia nº 1 Hospitalet de Llobregat","J. 1ª Instancia nº 2 Hospitalet de Llobregat","J. 1ª Instancia nº 3 Hospitalet de Llobregat","J. 1ª Instancia nº 1 Terrassa","J. 1ª Instancia nº 2 Terrassa","J. 1ª Instancia nº 1 Sabadell","J. 1ª Instancia nº 2 Sabadell","J. 1ª Instancia nº 1 Mataró","J. 1ª Instancia nº 1 Cornellà de Llobregat"],
-  "Valencia":["J. 1ª Instancia nº 1 Valencia","J. 1ª Instancia nº 2 Valencia","J. 1ª Instancia nº 3 Valencia","J. 1ª Instancia nº 4 Valencia","J. 1ª Instancia nº 5 Valencia","J. 1ª Instancia nº 6 Valencia","J. 1ª Instancia nº 7 Valencia","J. 1ª Instancia nº 8 Valencia","J. 1ª Instancia nº 9 Valencia","J. 1ª Instancia nº 10 Valencia","J. 1ª Instancia nº 11 Valencia","J. 1ª Instancia nº 12 Valencia","J. 1ª Instancia nº 1 Alicante","J. 1ª Instancia nº 2 Alicante","J. 1ª Instancia nº 3 Alicante","J. 1ª Instancia nº 4 Alicante","J. 1ª Instancia nº 5 Alicante","J. 1ª Instancia nº 1 Castellón","J. 1ª Instancia nº 2 Castellón","J. 1ª Instancia nº 3 Castellón","J. 1ª Instancia nº 1 Torrevieja","J. 1ª Instancia nº 1 Benidorm","J. 1ª Instancia nº 1 Elche","J. 1ª Instancia nº 2 Elche"],
-  "Málaga":["J. 1ª Instancia nº 1 Málaga","J. 1ª Instancia nº 2 Málaga","J. 1ª Instancia nº 3 Málaga","J. 1ª Instancia nº 4 Málaga","J. 1ª Instancia nº 5 Málaga","J. 1ª Instancia nº 6 Málaga","J. 1ª Instancia nº 7 Málaga","J. 1ª Instancia nº 8 Málaga","J. 1ª Instancia nº 9 Málaga","J. 1ª Instancia nº 10 Málaga","J. 1ª Instancia nº 1 Marbella","J. 1ª Instancia nº 2 Marbella","J. 1ª Instancia nº 3 Marbella","J. 1ª Instancia nº 1 Fuengirola","J. 1ª Instancia nº 1 Torremolinos","J. 1ª Instancia nº 1 Estepona","J. 1ª Instancia nº 1 Vélez-Málaga","J. 1ª Instancia nº 1 Antequera"],
-  "Sevilla":["J. 1ª Instancia nº 1 Sevilla","J. 1ª Instancia nº 2 Sevilla","J. 1ª Instancia nº 3 Sevilla","J. 1ª Instancia nº 4 Sevilla","J. 1ª Instancia nº 5 Sevilla","J. 1ª Instancia nº 6 Sevilla","J. 1ª Instancia nº 7 Sevilla","J. 1ª Instancia nº 8 Sevilla","J. 1ª Instancia nº 9 Sevilla","J. 1ª Instancia nº 10 Sevilla","J. 1ª Instancia nº 11 Sevilla","J. 1ª Instancia nº 1 Dos Hermanas","J. 1ª Instancia nº 1 Utrera","J. 1ª Instancia nº 1 Écija"],
-  "Murcia":["J. 1ª Instancia nº 1 Murcia","J. 1ª Instancia nº 2 Murcia","J. 1ª Instancia nº 3 Murcia","J. 1ª Instancia nº 4 Murcia","J. 1ª Instancia nº 5 Murcia","J. 1ª Instancia nº 6 Murcia","J. 1ª Instancia nº 7 Murcia","J. 1ª Instancia nº 1 Cartagena","J. 1ª Instancia nº 2 Cartagena","J. 1ª Instancia nº 3 Cartagena","J. 1ª Instancia nº 1 Lorca","J. 1ª Instancia nº 1 Molina de Segura","J. 1ª Instancia nº 1 Mazarrón","J. 1ª Instancia nº 1 San Javier"],
-  "Zaragoza":["J. 1ª Instancia nº 1 Zaragoza","J. 1ª Instancia nº 2 Zaragoza","J. 1ª Instancia nº 3 Zaragoza","J. 1ª Instancia nº 4 Zaragoza","J. 1ª Instancia nº 5 Zaragoza","J. 1ª Instancia nº 6 Zaragoza","J. 1ª Instancia nº 7 Zaragoza","J. 1ª Instancia nº 8 Zaragoza","J. 1ª Instancia nº 1 Huesca","J. 1ª Instancia nº 1 Teruel"],
-  "Palma":["J. 1ª Instancia nº 1 Palma","J. 1ª Instancia nº 2 Palma","J. 1ª Instancia nº 3 Palma","J. 1ª Instancia nº 4 Palma","J. 1ª Instancia nº 5 Palma","J. 1ª Instancia nº 6 Palma","J. 1ª Instancia nº 7 Palma","J. 1ª Instancia nº 1 Ibiza","J. 1ª Instancia nº 1 Manacor","J. 1ª Instancia nº 1 Inca"],
-  "Las Palmas":["J. 1ª Instancia nº 1 Las Palmas de Gran Canaria","J. 1ª Instancia nº 2 Las Palmas de Gran Canaria","J. 1ª Instancia nº 3 Las Palmas de Gran Canaria","J. 1ª Instancia nº 4 Las Palmas de Gran Canaria","J. 1ª Instancia nº 5 Las Palmas de Gran Canaria","J. 1ª Instancia nº 6 Las Palmas de Gran Canaria","J. 1ª Instancia nº 1 Santa Cruz de Tenerife","J. 1ª Instancia nº 2 Santa Cruz de Tenerife","J. 1ª Instancia nº 3 Santa Cruz de Tenerife","J. 1ª Instancia nº 4 Santa Cruz de Tenerife","J. 1ª Instancia nº 1 San Cristóbal de La Laguna","J. 1ª Instancia nº 1 Arrecife","J. 1ª Instancia nº 1 Puerto del Rosario"]
-};
-
-// Plazos medios CGPJ por provincia (meses) como fallback
-const PLAZOS_CGPJ = {
-  "Madrid":{admision:4,subasta:18,total:24},"Barcelona":{admision:5,subasta:22,total:28},
-  "Valencia":{admision:6,subasta:24,total:32},"Málaga":{admision:7,subasta:26,total:36},
-  "Sevilla":{admision:6,subasta:22,total:30},"Murcia":{admision:5,subasta:20,total:27},
-  "Zaragoza":{admision:4,subasta:16,total:22},"Palma":{admision:5,subasta:18,total:25},
-  "Las Palmas":{admision:6,subasta:20,total:28}
-};
-
-function loadJuzgados(){try{return JSON.parse(localStorage.getItem('npl_juzgados_v1'))||{}}catch(e){return{}}}
-function saveJuzgados(d){localStorage.setItem('npl_juzgados_v1',JSON.stringify(d))}
-
-function getPlazosJuzgado(juzgadoNombre,direccion){
-  // Buscar en datos propios primero
-  const datos=loadJuzgados();
-  if(juzgadoNombre&&datos[juzgadoNombre]&&(datos[juzgadoNombre].admision||datos[juzgadoNombre].subasta)){
-    return{...datos[juzgadoNombre],fuente:'propios',juzgado:juzgadoNombre};
-  }
-  // Fallback: datos CGPJ por provincia
-  if(direccion){
-    const dir=direccion.toLowerCase();
-    for(const[prov,plazos] of Object.entries(PLAZOS_CGPJ)){
-      if(dir.includes(prov.toLowerCase().split(' ')[0])){
-        return{...plazos,fuente:'cgpj',juzgado:null};
-      }
-    }
-  }
-  return{admision:6,subasta:22,total:30,fuente:'estimacion',juzgado:null};
-}
-
-function detectarProvincia(direccion){
-  if(!direccion)return null;
-  const d=direccion.toLowerCase();
-  for(const prov of Object.keys(JUZGADOS_DB)){
-    if(d.includes(prov.toLowerCase().split(' ')[0]))return prov;
-  }
-  return null;
-}
-
 function score(d,c){
   let s=60;
   if(d.tipo!=='hipotecario_primera')s+=15;if(d.clausulas==='si')s+=10;if(d.vulnerabilidad==='no')s+=5;
@@ -674,7 +644,11 @@ async function extraerDatos(){
     curDocs.forEach((d,i)=>body.append(`doc_${i}`,JSON.stringify({b64:d.b64,mime:d.mime})));
     body.append('count',curDocs.length);
     const r=await fetch('/api/extract',{method:'POST',body});
-    if(!r.ok)throw new Error();
+    if(!r.ok){
+      let msg='API no configurada. Introduce los datos manualmente.';
+      try{const errData=await r.json();if(errData.error)msg=`⚠ ${errData.error}`;}catch(e){}
+      throw new Error(msg);
+    }
     const data=await r.json();
     const mapa={capital:'f-cap',intereses:'f-int',tasacion:'f-tas',mercado:'f-mer',metros:'f-metros',habitaciones:'f-hab',planta:'f-planta',banos:'f-banos'};
     Object.entries(mapa).forEach(([k,id])=>{if(data[k])setVal(id,data[k]);});
@@ -692,7 +666,7 @@ async function extraerDatos(){
     document.getElementById('f-ext-status').textContent='✓ Datos extraídos — revisa los campos en verde';
   }catch(e){
     document.getElementById('f-ext-status').style.color='#7A4A0A';
-    document.getElementById('f-ext-status').textContent='⚠ API no configurada. Introduce los datos manualmente.';
+    document.getElementById('f-ext-status').textContent=e.message||'⚠ Error al extraer. Introduce los datos manualmente.';
   }
   document.getElementById('f-btn-ext').disabled=false;
 }
@@ -777,7 +751,14 @@ function guardarOp(tipo){
   const capital=nn('f-cap');if(!capital){alert('Introduce el capital pendiente');return;}
   const precio=nn('f-pre');if(!precio){alert('Introduce el precio de compra/estimado — es la base del análisis de rentabilidad');return;}
   const esJudicial=vv('f-est')!=='extrajudicial';
-  const d={id:Date.now().toString(),ref,tipo:vv('f-tipo'),capital,intereses:nn('f-int'),fecha_pago:vv('f-fecha'),fase:esJudicial?vv('f-fase'):null,estrategia:vv('f-est'),clausulas:esJudicial?vv('f-cla'):null,vulnerabilidad:esJudicial?vv('f-vul'):null,epi:esJudicial?vv('f-epi'):null,juzgado:esJudicial?vv('f-juzgado'):null,precio,tasacion:nn('f-tas'),mercado:nn('f-mer'),cargas:nn('f-car'),capex:nn('f-cap2'),meses:nn('f-mes')||12,liquidez:vv('f-liq'),ocupacion:vv('f-ocu'),obs:vv('f-obs'),direccion:vv('f-dir'),refCatastral:vv('f-refcat'),tipo_inmueble:vv('f-tipoInm'),metros:nn('f-metros'),habitaciones:nn('f-hab'),banos:nn('f-banos'),planta:vv('f-planta'),fecha:new Date().toISOString(),docs:curDocs.map(x=>x.nombre),tipoOp:tipo,finalizada:false};
+  const esEdicion=!!editandoId;
+  let datosOriginales={};
+  if(esEdicion){
+    const listaOrig=editandoCol==='inversion'?loadInv():loadEst();
+    datosOriginales=listaOrig.find(o=>o.id===editandoId)||{};
+  }
+  const refAnterior=datosOriginales.ref;
+  const d={...datosOriginales,id:esEdicion?editandoId:Date.now().toString(),ref,tipo:vv('f-tipo'),capital,intereses:nn('f-int'),fecha_pago:vv('f-fecha'),fase:esJudicial?vv('f-fase'):null,estrategia:vv('f-est'),clausulas:esJudicial?vv('f-cla'):null,vulnerabilidad:esJudicial?vv('f-vul'):null,epi:esJudicial?vv('f-epi'):null,juzgado:esJudicial?vv('f-juzgado'):null,precio,tasacion:nn('f-tas'),mercado:nn('f-mer'),cargas:nn('f-car'),capex:nn('f-cap2'),meses:nn('f-mes')||12,liquidez:vv('f-liq'),ocupacion:vv('f-ocu'),obs:vv('f-obs'),direccion:vv('f-dir'),refCatastral:vv('f-refcat'),tipo_inmueble:vv('f-tipoInm'),metros:nn('f-metros'),habitaciones:nn('f-hab'),banos:nn('f-banos'),planta:vv('f-planta'),fecha:esEdicion?datosOriginales.fecha:new Date().toISOString(),docs:curDocs.length?curDocs.map(x=>x.nombre):(datosOriginales.docs||[]),tipoOp:tipo,finalizada:esEdicion?datosOriginales.finalizada:false};
   const c=calc(d);const sc=score(d,c);d.score=sc;
   document.getElementById('f-placeholder').style.display='none';
   document.getElementById('f-resultado').style.display='block';
@@ -799,8 +780,26 @@ function guardarOp(tipo){
   const dict=generarDictamen(d,c,sc);
   document.getElementById('f-dictamen').textContent=dict;
   d.ai_dictamen=dict;
-  if(tipo==='inversion'){const inv=loadInv();inv.push(d);saveInv(inv);}
-  else{const est=loadEst();est.push(d);saveEst(est);}
+
+  if(esEdicion){
+    // Actualizar en la colección correspondiente (puede cambiar de inversión a estudio o viceversa si se cambió tipoOp, pero aquí tipo viene fijo del formulario abierto)
+    const lista=editandoCol==='inversion'?loadInv():loadEst();
+    const idx=lista.findIndex(o=>o.id===editandoId);
+    if(idx>=0){
+      lista[idx]=d;
+      if(editandoCol==='inversion')saveInv(lista);else saveEst(lista);
+      // Si cambió la referencia, actualizar gastos y resoluciones/tareas asociadas
+      if(refAnterior&&refAnterior!==ref){
+        const gastos=loadGastos().map(g=>g.opRef===refAnterior?{...g,opRef:ref}:g);saveGastos(gastos);
+        const resoluciones=loadResoluciones().map(r=>r.opRef===refAnterior?{...r,opRef:ref}:r);saveResoluciones(resoluciones);
+        const tareas=loadTareas().map(t=>t.opRef===refAnterior?{...t,opRef:ref}:t);saveTareas(tareas);
+      }
+    }
+    editandoId=null;editandoCol=null;
+  }else{
+    if(tipo==='inversion'){const inv=loadInv();inv.push(d);saveInv(inv);}
+    else{const est=loadEst();est.push(d);saveEst(est);}
+  }
   updatePill();
 }
 
@@ -927,8 +926,11 @@ function abrirFicha(id,col){
   const esInv=col==='inversion';
   document.getElementById('ficha-title').textContent=`${d.ref}${d.direccion?' · '+d.direccion.split(',')[0]:''}${d.finalizada?' ✅':''}`;
 
+  const esJudicialOp=esInv&&d.estrategia!=='extrajudicial';
   const tabsData=esInv
-    ?[['resumen','📊'],['fiscal','💰 Fiscal'],['negociacion','🤝'],['inmueble','🗺'],['gastos','🧾'],['dictamen','🧠']]
+    ?(esJudicialOp
+      ?[['resumen','📊'],['fiscal','💰 Fiscal'],['negociacion','🤝'],['inmueble','🗺'],['gastos','🧾'],['judicial','⚖️ Judicial'],['dictamen','🧠']]
+      :[['resumen','📊'],['fiscal','💰 Fiscal'],['negociacion','🤝'],['inmueble','🗺'],['gastos','🧾'],['dictamen','🧠']])
     :[['resumen','📊'],['negociacion','🤝'],['inmueble','🗺'],['dictamen','🧠']];
   document.getElementById('ficha-tabs').innerHTML=tabsData.map((t,i)=>`<div class="modal-tab ${i===0?'active':''}" onclick="switchTab('${t[0]}',this)">${t[1]}</div>`).join('');
 
@@ -938,6 +940,7 @@ function abrirFicha(id,col){
 
   // RESUMEN
   document.getElementById('ft-resumen').innerHTML=`
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn btn-out btn-xs" onclick="editarOperacion('${id}','${col}')">✏️ Editar datos</button></div>
     ${!esInv?`<div class="convertir-banner"><div style="font-size:22px">🚀</div><div style="flex:1"><div style="font-size:13px;font-weight:700;color:#2A5E12">¿Operación confirmada?</div><div style="font-size:11px;color:#3A7A20;margin-top:1px">Conviértela en inversión para actualizar el capital del dashboard</div></div><button class="btn btn-green btn-sm" onclick="convertirAInversion('${id}')">✅ Confirmar inversión</button></div>`:''}
     ${d.finalizada?`<div style="background:#EBF7E2;border:1px solid #B2D98A;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">✅</div><div><div style="font-size:13px;font-weight:700;color:#2A5E12">Operación finalizada</div><div style="font-size:11px;color:#3A7A20">Cantidad obtenida: €${fmt(d.cantidadObtenida)} · ${d.fechaCierre?new Date(d.fechaCierre).toLocaleDateString('es-ES'):''}</div></div></div>`:''}
     <div class="rhead" style="background:${vbg};margin-bottom:10px"><div><div style="font-size:15px;font-weight:700;color:${vc}">${verd} · ${sc}/100</div><div style="font-size:11px;color:${vc};margin-top:2px">${d.estrategia} · ${d.tipo}${d.refCatastral?` · `+catLink(d.refCatastral):''}</div></div><div style="text-align:right"><div style="font-size:10px;color:${vc};opacity:.7;text-transform:uppercase">TIR ${esInv?'neta':'est.'}</div><div style="font-size:21px;font-weight:700;color:${vc}">${pct(esInv?cn.tirNeto:c.tir)}</div></div></div>
@@ -988,7 +991,7 @@ function abrirFicha(id,col){
   if(esInv){
     const CAT={notaria:'Notaría',registro:'Registro',gestoria:'Gestoría',abogado:'Abogado',procurador:'Procurador',tasacion:'Tasación',itp:'ITP/AJD',plusvalia:'Plusvalía',ibi:'IBI',nota_simple:'Nota simple',due_diligence:'Due diligence',subasta:'Subasta',reforma:'Reforma',agencia:'Agencia',financiacion:'Financiación',seguro:'Seguros',otro:'Otro'};
     document.getElementById('ft-gastos').innerHTML=`
-      ${gastos.length?`<table class="dtable"><thead><tr><th>Concepto</th><th>Categoría</th><th class="tr">Importe</th></tr></thead><tbody>${gastos.map(g=>`<tr><td>${g.nombre}</td><td>${CAT[g.categoria]||g.categoria}</td><td class="tr">€${fmt(g.importe)}</td></tr>`).join('')}</tbody></table><div style="display:flex;justify-content:space-between;padding:9px 0 2px;border-top:0.5px solid #DDE3EC;margin-top:5px"><span class="gtotal">Σ gastos: €${fmt(cn.totalGastos)}</span><span class="gtotal" style="background:#EBF7E2;color:#2A5E12;border-color:#B2D98A">Coste total: €${fmt((d.precio||0)+cn.totalGastos)}</span></div>`:'<div class="empty" style="padding:14px 0">Sin gastos</div>'}
+      ${gastos.length?`<table class="dtable"><thead><tr><th>Concepto</th><th>Categoría</th><th class="tr">Importe</th><th></th></tr></thead><tbody>${gastos.map(g=>`<tr><td>${g.nombre}</td><td>${CAT[g.categoria]||g.categoria}</td><td class="tr">€${fmt(g.importe)}</td><td style="width:36px;text-align:center"><button class="gasto-del" onclick="eliminarGasto('${g.id}','${id}','${col}')" title="Eliminar gasto">🗑</button></td></tr>`).join('')}</tbody></table><div style="display:flex;justify-content:space-between;padding:9px 0 2px;border-top:0.5px solid #DDE3EC;margin-top:5px"><span class="gtotal">Σ gastos: €${fmt(cn.totalGastos)}</span><span class="gtotal" style="background:#EBF7E2;color:#2A5E12;border-color:#B2D98A">Coste total: €${fmt((d.precio||0)+cn.totalGastos)}</span></div>`:'<div class="empty" style="padding:14px 0">Sin gastos</div>'}
       <div class="gasto-form">
         <div style="font-size:11px;font-weight:600;color:#6B7E96;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">➕ Añadir gasto</div>
         <div class="g2">
@@ -1001,6 +1004,11 @@ function abrirFicha(id,col){
         </div>
         <button class="btn btn-dark btn-sm" style="width:100%" onclick="addGastoFicha('${d.ref}','${id}','${col}')">➕ Añadir</button>
       </div>`;
+  }
+
+  // JUDICIAL — documentación judicial y tareas/recordatorios
+  if(esJudicialOp){
+    document.getElementById('ft-judicial').innerHTML=renderJudicialHTML(d);
   }
 
   // DICTAMEN
@@ -1018,7 +1026,7 @@ function abrirFicha(id,col){
 function switchTab(name,btn){
   document.querySelectorAll('#ficha-tabs .modal-tab').forEach(t=>t.classList.remove('active'));
   if(btn)btn.classList.add('active');
-  ['resumen','fiscal','negociacion','inmueble','gastos','dictamen'].forEach(n=>{
+  ['resumen','fiscal','negociacion','inmueble','gastos','judicial','dictamen'].forEach(n=>{
     const el=document.getElementById('ft-'+n);if(el)el.style.display=n===name?'block':'none';
   });
   if(name==='inmueble')setTimeout(()=>mapInst&&mapInst.invalidateSize(),300);
@@ -1070,15 +1078,55 @@ function addGastoFicha(opRef,id,col){
   const gastos=loadGastos();gastos.push(g);saveGastos(gastos);
   abrirFicha(id,col);rDash();
 }
+function eliminarGasto(gastoId,id,col){
+  if(!confirm('¿Eliminar este gasto?'))return;
+  let gastos=loadGastos();
+  gastos=gastos.filter(g=>g.id!==gastoId);
+  saveGastos(gastos);
+  abrirFicha(id,col);rDash();
+}
 
 // ── FORMULARIO ────────────────────────────────────────────────────────────────
 function abrirFormulario(tipo){
-  curFormTipo=tipo;curDocs=[];
+  curFormTipo=tipo;curDocs=[];editandoId=null;editandoCol=null;
   document.getElementById('form-title').textContent=tipo==='inversion'?'Nueva inversión':'Nuevo estudio';
   document.getElementById('form-body').innerHTML=formHTML(tipo);
   document.getElementById('form-overlay').classList.add('open');
   document.body.style.overflow='hidden';
   toggleCamposJudiciales();
+}
+function editarOperacion(id,col){
+  const lista=col==='inversion'?loadInv():loadEst();
+  const d=lista.find(o=>o.id===id);if(!d)return;
+  curFormTipo=col;curDocs=[];editandoId=id;editandoCol=col;
+  closeMod('ficha-overlay');
+  document.getElementById('form-title').textContent=`Editar ${col==='inversion'?'inversión':'estudio'}: ${d.ref}`;
+  document.getElementById('form-body').innerHTML=formHTML(col);
+  document.getElementById('form-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  // Precargar todos los campos
+  setVal('f-ref',d.ref);
+  document.getElementById('f-tipo').value=d.tipo||'hipotecario_segunda';
+  document.getElementById('f-est').value=d.estrategia||'extrajudicial';
+  setVal('f-cap',d.capital);setVal('f-int',d.intereses);setVal('f-pre',d.precio);
+  setVal('f-fecha',d.fecha_pago);
+  if(d.fase)document.getElementById('f-fase').value=d.fase;
+  setVal('f-dir',d.direccion);setVal('f-refcat',d.refCatastral);
+  if(d.tipo_inmueble)document.getElementById('f-tipoInm').value=d.tipo_inmueble;
+  setVal('f-metros',d.metros);setVal('f-planta',d.planta);setVal('f-hab',d.habitaciones);setVal('f-banos',d.banos);
+  setVal('f-tas',d.tasacion);setVal('f-mer',d.mercado);setVal('f-car',d.cargas);setVal('f-cap2',d.capex);setVal('f-mes',d.meses);
+  if(d.liquidez)document.getElementById('f-liq').value=d.liquidez;
+  if(d.ocupacion)document.getElementById('f-ocu').value=d.ocupacion;
+  setVal('f-obs',d.obs);
+  toggleCamposJudiciales();
+  if(d.estrategia!=='extrajudicial'){
+    if(d.clausulas)document.getElementById('f-cla').value=d.clausulas;
+    if(d.vulnerabilidad)document.getElementById('f-vul').value=d.vulnerabilidad;
+    if(d.epi)document.getElementById('f-epi').value=d.epi;
+    actualizarJuzgadoSugerido();
+    if(d.juzgado)setTimeout(()=>{const sel=document.getElementById('f-juzgado');if(sel)sel.value=d.juzgado;mostrarPlazosPreview();},50);
+  }
+  // Remover campos en blanco con valores AI-filled visuales (no aplica aquí, es edición manual)
 }
 function limpiarForm(){document.getElementById('form-body').innerHTML=formHTML(curFormTipo);curDocs=[];toggleCamposJudiciales();}
 function closeMod(id,e){
@@ -1121,15 +1169,181 @@ function exportarUltimo(){
   const d=todas[0];exportarOp(d.id,inv.find(o=>o.id===d.id)?'inversion':'estudio');
 }
 
+// ── MÓDULO JUDICIAL: RESOLUCIONES Y TAREAS ────────────────────────────────────
+let curResDoc=null;
+
+function renderJudicialHTML(d){
+  const resoluciones=loadResoluciones().filter(r=>r.opRef===d.ref).sort((a,b)=>new Date(b.fechaResolucion||0)-new Date(a.fechaResolucion||0));
+  const tareas=loadTareas().filter(t=>t.opRef===d.ref).sort((a,b)=>new Date(a.fechaLimite||'9999')-new Date(b.fechaLimite||'9999'));
+  const tareasPendientes=tareas.filter(t=>!t.completada);
+
+  const tareasHtml=tareasPendientes.length?tareasPendientes.map(t=>{
+    const hoy=new Date();const limite=t.fechaLimite?new Date(t.fechaLimite):null;
+    const diasRestantes=limite?Math.ceil((limite-hoy)/(1000*60*60*24)):null;
+    const vencida=diasRestantes!==null&&diasRestantes<0;
+    const urgente=diasRestantes!==null&&diasRestantes>=0&&diasRestantes<=5;
+    const bg=vencida?'#FEECEC':urgente?'#FEF3E2':'#F7F9FC';
+    const bc=vencida?'#F0A0A0':urgente?'#F5C878':'#DDE3EC';
+    const tc=vencida?'#7A1A1A':urgente?'#7A4A0A':'#0A1628';
+    return`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:${bg};border:0.5px solid ${bc};border-radius:8px;margin-bottom:7px">
+      <input type="checkbox" onchange="completarTarea('${t.id}','${d.ref}','inversion')" style="margin-top:3px;cursor:pointer">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600;color:${tc}">${t.descripcion}</div>
+        <div style="font-size:11px;color:${tc};opacity:.8;margin-top:2px">${t.fechaLimite?`Límite: ${new Date(t.fechaLimite).toLocaleDateString('es-ES')} ${vencida?'· ⚠️ VENCIDA':urgente?`· ${diasRestantes}d restantes`:''}`:'Sin plazo definido'}</div>
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty" style="padding:14px 0">Sin tareas pendientes</div>';
+
+  const resHtml=resoluciones.length?resoluciones.map(r=>{
+    const urgC={alta:'#7A1A1A',media:'#7A4A0A',baja:'#185FA5',informativa:'#8A9BB0'}[r.urgencia]||'#8A9BB0';
+    return`<div style="background:#fff;border:0.5px solid #DDE3EC;border-radius:9px;padding:11px 13px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
+        <div style="font-size:12px;font-weight:700;color:#0A1628;text-transform:uppercase">${r.tipoResolucion||'Resolución'}</div>
+        <span class="badge" style="background:${urgC}15;color:${urgC};border:0.5px solid ${urgC}40">${r.urgencia||'—'}</span>
+      </div>
+      <div style="font-size:11px;color:#8A9BB0;margin-bottom:5px">${r.fechaResolucion?new Date(r.fechaResolucion).toLocaleDateString('es-ES'):''}${r.numeroProcedimiento?` · Autos ${r.numeroProcedimiento}`:''}</div>
+      <div style="font-size:12px;color:#4A5568;line-height:1.6">${r.resumenContenido||''}</div>
+      ${r.actuacionRequerida?`<div style="margin-top:7px;padding:7px 10px;background:#F7F9FC;border-radius:6px;font-size:11px;color:#0F3D6E"><strong>Actuación:</strong> ${r.actuacionRequerida}</div>`:''}
+    </div>`;
+  }).join(''):'<div class="empty" style="padding:14px 0">Sin resoluciones registradas</div>';
+
+  return`
+    <div class="panel" style="border:1px solid #9DCAF0;background:#F7FBFF;margin-bottom:12px">
+      <div class="phead" style="border-bottom-color:#D0E8F8"><span class="ptitle" style="color:#185FA5">📎 Subir resolución judicial</span></div>
+      <div class="drop-zone" id="res-drop" onclick="document.getElementById('res-file').click()" ondragover="dOver(event,'res-drop')" ondragleave="dLeave('res-drop')" ondrop="dDropRes(event,'res-drop','${d.ref}')">
+        <div style="font-size:24px;margin-bottom:6px">⚖️</div>
+        <div style="font-size:13px;font-weight:600;color:#0F3D6E">Auto, decreto, diligencia, notificación...</div>
+        <div style="font-size:11px;color:#6B8FAA;margin-top:2px">Claude analiza el tipo, plazos y genera el recordatorio</div>
+      </div>
+      <input type="file" id="res-file" accept=".pdf,image/*" style="display:none" onchange="handleResFile(this.files[0],'${d.ref}')">
+      <div id="res-chip"></div>
+      <div id="res-status" style="display:none;font-size:12px;padding:8px 0;text-align:center"></div>
+    </div>
+    <div class="panel">
+      <div class="phead"><span class="ptitle">✅ Tareas y recordatorios</span></div>
+      <div id="judicial-tareas-${d.ref.replace(/[^a-zA-Z0-9]/g,'_')}">${tareasHtml}</div>
+    </div>
+    <div class="panel">
+      <div class="phead"><span class="ptitle">📂 Histórico de resoluciones</span></div>
+      ${resHtml}
+    </div>`;
+}
+
+function dDropRes(e,id,opRef){e.preventDefault();document.getElementById(id)?.classList.remove('over');const f=e.dataTransfer.files[0];if(f)processResFile(f,opRef);}
+function handleResFile(f,opRef){if(f)processResFile(f,opRef);}
+function processResFile(f,opRef){
+  if(f.size>10*1024*1024){alert('Máximo 10 MB');return;}
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    curResDoc={nombre:f.name,b64:ev.target.result.split(',')[1],mime:f.type||'application/pdf'};
+    document.getElementById('res-chip').innerHTML=`<div class="doc-chip"><span>📄</span><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#2A5E12">${f.name}</div></div></div>`;
+    analizarResolucion(opRef);
+  };
+  rd.readAsDataURL(f);
+}
+
+async function analizarResolucion(opRef){
+  if(!curResDoc)return;
+  const statusEl=document.getElementById('res-status');
+  statusEl.style.display='block';statusEl.style.color='#185FA5';
+  statusEl.textContent='⏳ Analizando resolución judicial...';
+  try{
+    const body=new FormData();
+    body.append('doc_0',JSON.stringify({b64:curResDoc.b64,mime:curResDoc.mime}));
+    body.append('count','1');
+    body.append('modo','resolucion');
+    const r=await fetch('/api/extract',{method:'POST',body});
+    if(!r.ok)throw new Error();
+    const data=await r.json();
+
+    const resolucion={id:Date.now().toString(),opRef,...data,docNombre:curResDoc.nombre,fechaSubida:new Date().toISOString()};
+    const resoluciones=loadResoluciones();resoluciones.push(resolucion);saveResoluciones(resoluciones);
+
+    if(data.actuacionRequerida&&data.urgencia!=='informativa'){
+      const tarea={id:(Date.now()+1).toString(),opRef,descripcion:data.actuacionRequerida,fechaLimite:data.fechaLimite||null,urgencia:data.urgencia,origenResolucion:resolucion.id,completada:false,creada:new Date().toISOString()};
+      const tareas=loadTareas();tareas.push(tarea);saveTareas(tareas);
+    }
+
+    statusEl.style.color='#2A6E14';
+    statusEl.textContent=`✓ Resolución analizada: ${data.tipoResolucion||'documento'}${data.fechaLimite?` — recordatorio creado para ${new Date(data.fechaLimite).toLocaleDateString('es-ES')}`:''}`;
+    curResDoc=null;
+
+    // Refrescar ficha si está abierta
+    const inv=loadInv();const opInv=inv.find(o=>o.ref===opRef);
+    if(opInv)abrirFicha(opInv.id,'inversion');
+    updatePillTareas();
+  }catch(e){
+    statusEl.style.color='#7A4A0A';
+    statusEl.textContent='⚠ Error al analizar. Inténtalo de nuevo.';
+  }
+}
+
+function completarTarea(tareaId,opRef,col){
+  const tareas=loadTareas();
+  const idx=tareas.findIndex(t=>t.id===tareaId);
+  if(idx>=0){tareas[idx].completada=true;saveTareas(tareas);}
+  const inv=loadInv();const opInv=inv.find(o=>o.ref===opRef);
+  if(opInv)abrirFicha(opInv.id,'inversion');
+  updatePillTareas();rTareas();
+}
+
+function updatePillTareas(){
+  const tareas=loadTareas().filter(t=>!t.completada);
+  const p=document.getElementById('alert-pill');
+  if(!p)return;
+  const hoy=new Date();
+  const urgentes=tareas.filter(t=>{
+    if(!t.fechaLimite)return false;
+    const dias=Math.ceil((new Date(t.fechaLimite)-hoy)/(1000*60*60*24));
+    return dias<=5;
+  }).length;
+  if(urgentes>0){p.style.display='flex';document.getElementById('alert-count').textContent=urgentes;}
+}
+
+// ── VISTA GLOBAL: TAREAS PENDIENTES ───────────────────────────────────────────
+function rTareas(){
+  const tareas=loadTareas().filter(t=>!t.completada);
+  const inv=loadInv();
+  const hoy=new Date();
+  const conInfo=tareas.map(t=>{
+    const op=inv.find(o=>o.ref===t.opRef);
+    const dias=t.fechaLimite?Math.ceil((new Date(t.fechaLimite)-hoy)/(1000*60*60*24)):null;
+    return{...t,opId:op?.id,opDireccion:op?.direccion,dias};
+  }).sort((a,b)=>(a.dias??9999)-(b.dias??9999));
+
+  const cont=document.getElementById('tareas-lista');
+  if(!cont)return;
+  if(!conInfo.length){
+    cont.innerHTML=`<div style="display:flex;gap:10px;padding:12px 14px;border-radius:9px;background:#EBF7E2;align-items:center"><div style="font-size:20px">✅</div><div style="font-size:13px;color:#2A5E12;font-weight:600">Sin tareas pendientes en ninguna operación</div></div>`;
+    return;
+  }
+  cont.innerHTML=conInfo.map(t=>{
+    const vencida=t.dias!==null&&t.dias<0;
+    const urgente=t.dias!==null&&t.dias>=0&&t.dias<=5;
+    const bg=vencida?'#FEECEC':urgente?'#FEF3E2':'#F7F9FC';
+    const bc=vencida?'#F0A0A0':urgente?'#F5C878':'#DDE3EC';
+    const tc=vencida?'#7A1A1A':urgente?'#7A4A0A':'#0A1628';
+    return`<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:${bg};border:0.5px solid ${bc};border-radius:10px;margin-bottom:9px;cursor:pointer" onclick="${t.opId?`abrirFicha('${t.opId}','inversion')`:''}">
+      <input type="checkbox" onclick="event.stopPropagation()" onchange="completarTarea('${t.id}','${t.opRef}','inversion')" style="margin-top:3px;cursor:pointer">
+      <div style="flex:1">
+        <div style="font-size:10px;font-weight:700;color:${tc};text-transform:uppercase;letter-spacing:.05em">${t.opRef}${t.opDireccion?` · ${t.opDireccion.split(',')[0]}`:''}</div>
+        <div style="font-size:13px;font-weight:600;color:${tc};margin-top:3px">${t.descripcion}</div>
+        <div style="font-size:11px;color:${tc};opacity:.8;margin-top:3px">${t.fechaLimite?`Límite: ${new Date(t.fechaLimite).toLocaleDateString('es-ES')} ${vencida?'· ⚠️ VENCIDA':urgente?`· ${t.dias}d restantes`:''}`:'Sin plazo definido'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ── NAVEGACIÓN Y RENDER ───────────────────────────────────────────────────────
 function showPage(name){
-  document.querySelectorAll('.ni').forEach((b,i)=>{const ns=['dashboard','inversiones','estudio','alertas','juzgados'];b.classList.toggle('active',ns[i]===name);});
+  document.querySelectorAll('.ni').forEach((b,i)=>{const ns=['dashboard','inversiones','estudio','alertas','tareas','juzgados'];b.classList.toggle('active',ns[i]===name);});
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   if(name==='dashboard')rDash();
   if(name==='inversiones')rInversiones('todas');
   if(name==='estudio')rEstudio();
   if(name==='alertas')rAlertas();
+  if(name==='tareas')rTareas();
   if(name==='juzgados')rJuzgados();
 }
 
@@ -1181,6 +1395,59 @@ function guardarPlazoJuzgado(juzgadoNombre,id){
   saveJuzgadosData(datos);
   const btn=event.target;btn.textContent='✓';btn.style.background='#2A6E14';
   setTimeout(()=>{btn.textContent='💾';btn.style.background='';},1200);
+}
+
+// ── COPIA DE SEGURIDAD: EXPORTAR/IMPORTAR TODA LA PLATAFORMA ──────────────────
+function exportarTodo(){
+  const backup={
+    version:1,
+    fechaExportacion:new Date().toISOString(),
+    inversiones:loadInv(),
+    estudios:loadEst(),
+    gastos:loadGastos(),
+    juzgados:loadJuzgados(),
+    resoluciones:loadResoluciones(),
+    tareas:loadTareas()
+  };
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`npl-invest-backup-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importarTodo(file){
+  if(!file)return;
+  const statusEl=document.getElementById('import-status');
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    try{
+      const backup=JSON.parse(ev.target.result);
+      if(!backup.inversiones&&!backup.estudios&&!backup.juzgados){
+        throw new Error('Archivo no reconocido');
+      }
+      const confirmMsg=`Esto SUSTITUIRÁ todos los datos actuales por los del archivo (${backup.fechaExportacion?new Date(backup.fechaExportacion).toLocaleDateString('es-ES'):'fecha desconocida'}):\n\n• ${backup.inversiones?.length||0} inversiones\n• ${backup.estudios?.length||0} estudios\n• ${backup.gastos?.length||0} gastos\n• ${Object.keys(backup.juzgados||{}).length} juzgados con datos\n• ${backup.resoluciones?.length||0} resoluciones\n• ${backup.tareas?.length||0} tareas\n\n¿Continuar?`;
+      if(!confirm(confirmMsg))return;
+      if(backup.inversiones)saveInv(backup.inversiones);
+      if(backup.estudios)saveEst(backup.estudios);
+      if(backup.gastos)saveGastos(backup.gastos);
+      if(backup.juzgados)saveJuzgadosData(backup.juzgados);
+      if(backup.resoluciones)saveResoluciones(backup.resoluciones);
+      if(backup.tareas)saveTareas(backup.tareas);
+      statusEl.style.display='block';
+      statusEl.style.background='#EBF7E2';statusEl.style.color='#2A5E12';
+      statusEl.textContent='✓ Datos importados correctamente. Recargando...';
+      setTimeout(()=>location.reload(),1200);
+    }catch(e){
+      statusEl.style.display='block';
+      statusEl.style.background='#FEECEC';statusEl.style.color='#7A1A1A';
+      statusEl.textContent='⚠ Error: el archivo no es un backup válido de NPL Invest.';
+    }
+  };
+  rd.readAsText(file);
+  document.getElementById('import-file').value='';
 }
 
 function rDash(){
@@ -1281,6 +1548,14 @@ function rAlertas(){
 function updatePill(){
   const inv=loadInv().filter(o=>!o.finalizada);const gastos=loadGastos();let n=0;
   inv.forEach(o=>{const go=gastos.filter(g=>g.opRef===o.ref);const cn=calcNeto(o,go);if(o.clausulas==='pendiente')n++;if(o.tipo==='hipotecario_primera'&&o.vulnerabilidad!=='no')n++;if(cn.rs<0)n++;if(o.precio>cn.pm)n++;});
+  const tareas=loadTareas().filter(t=>!t.completada);
+  const hoy=new Date();
+  const tareasUrgentes=tareas.filter(t=>{
+    if(!t.fechaLimite)return false;
+    const dias=Math.ceil((new Date(t.fechaLimite)-hoy)/(1000*60*60*24));
+    return dias<=5;
+  }).length;
+  n+=tareasUrgentes;
   const p=document.getElementById('alert-pill');if(n>0){p.style.display='flex';document.getElementById('alert-count').textContent=n;}else p.style.display='none';
 }
 
