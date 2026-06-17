@@ -589,6 +589,7 @@ function formHTML(tipo){
         <div class="field"><label>Liquidez zona</label><select id="f-liq"><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option></select></div>
         <div class="field"><label>Ocupación</label><select id="f-ocu"><option value="vacio">Vacío</option><option value="deudor">Deudor</option><option value="arrendado_posterior">Arrendado (post.)</option><option value="arrendado_anterior">Arrendado (ant.)</option><option value="tercero">Tercero</option></select></div>
       </div>
+      <div class="field"><label>¿Vivienda habitual del deudor? <span style="opacity:.6;font-weight:400;text-transform:none">(arts. 670-671 LEC — determina tipo de subasta 50%/70%)</span></label><select id="f-vivhab"><option value="">— Sin confirmar (se estima por ocupación) —</option><option value="si">Sí — vivienda habitual</option><option value="no">No — vivienda habitual</option></select></div>
       <div class="field"><label>Observaciones</label><textarea id="f-obs" placeholder="Negociación, estado inmueble, deudor..."></textarea></div>
     </div>
     <div style="display:flex;gap:8px"><button class="btn ${esInv?'btn-dark':'btn-amber'}" style="flex:1" onclick="guardarOp('${tipo}')">💾 Guardar y analizar</button><button class="btn btn-out" onclick="limpiarForm()">↺</button></div>
@@ -657,6 +658,8 @@ async function extraerDatos(){
     if(data.tipo_inmueble)document.getElementById('f-tipoInm').value=data.tipo_inmueble;
     if(data.fase)document.getElementById('f-fase').value=data.fase;
     if(data.clausulas)document.getElementById('f-cla').value=data.clausulas;
+    if(data.vivienda_habitual_deudor===true)document.getElementById('f-vivhab').value='si';
+    else if(data.vivienda_habitual_deudor===false)document.getElementById('f-vivhab').value='no';
     if(data.observaciones)setVal('f-obs',data.observaciones);
     document.getElementById('f-filled').style.display='inline-flex';
     document.getElementById('f-ext-banner').style.display='none';
@@ -755,7 +758,9 @@ function guardarOp(tipo){
     datosOriginales=listaOrig.find(o=>o.id===editandoId)||{};
   }
   const refAnterior=datosOriginales.ref;
-  const d={...datosOriginales,id:esEdicion?editandoId:Date.now().toString(),ref,tipo:vv('f-tipo'),capital,intereses:nn('f-int'),fecha_pago:vv('f-fecha'),fase:esJudicial?vv('f-fase'):null,estrategia:vv('f-est'),clausulas:esJudicial?vv('f-cla'):null,vulnerabilidad:esJudicial?vv('f-vul'):null,epi:esJudicial?vv('f-epi'):null,juzgado:esJudicial?vv('f-juzgado'):null,precio,tasacion:nn('f-tas'),mercado:nn('f-mer'),cargas:nn('f-car'),capex:nn('f-cap2'),meses:nn('f-mes')||12,liquidez:vv('f-liq'),ocupacion:vv('f-ocu'),obs:vv('f-obs'),direccion:vv('f-dir'),refCatastral:vv('f-refcat'),tipo_inmueble:vv('f-tipoInm'),metros:nn('f-metros'),habitaciones:nn('f-hab'),banos:nn('f-banos'),planta:vv('f-planta'),fecha:esEdicion?datosOriginales.fecha:new Date().toISOString(),docs:curDocs.length?curDocs.map(x=>x.nombre):(datosOriginales.docs||[]),tipoOp:tipo,finalizada:esEdicion?datosOriginales.finalizada:false};
+  const vivHabVal=vv('f-vivhab');
+  const viviendaHabitualDeudor=vivHabVal==='si'?true:vivHabVal==='no'?false:null;
+  const d={...datosOriginales,id:esEdicion?editandoId:Date.now().toString(),ref,tipo:vv('f-tipo'),capital,intereses:nn('f-int'),fecha_pago:vv('f-fecha'),fase:esJudicial?vv('f-fase'):null,estrategia:vv('f-est'),clausulas:esJudicial?vv('f-cla'):null,vulnerabilidad:esJudicial?vv('f-vul'):null,epi:esJudicial?vv('f-epi'):null,juzgado:esJudicial?vv('f-juzgado'):null,precio,tasacion:nn('f-tas'),mercado:nn('f-mer'),cargas:nn('f-car'),capex:nn('f-cap2'),meses:nn('f-mes')||12,liquidez:vv('f-liq'),ocupacion:vv('f-ocu'),viviendaHabitualDeudor,obs:vv('f-obs'),direccion:vv('f-dir'),refCatastral:vv('f-refcat'),tipo_inmueble:vv('f-tipoInm'),metros:nn('f-metros'),habitaciones:nn('f-hab'),banos:nn('f-banos'),planta:vv('f-planta'),fecha:esEdicion?datosOriginales.fecha:new Date().toISOString(),docs:curDocs.length?curDocs.map(x=>x.nombre):(datosOriginales.docs||[]),tipoOp:tipo,finalizada:esEdicion?datosOriginales.finalizada:false};
   const c=calc(d);const sc=score(d,c);d.score=sc;
   document.getElementById('f-placeholder').style.display='none';
   document.getElementById('f-resultado').style.display='block';
@@ -842,15 +847,27 @@ function renderNego(d,c,sc,cid){
 }
 function ri(ok,a,b){const c=ok?'r-ok':'r-warn';return`<div class="riesgo-item ${c}"><span style="font-size:13px">${ok?'✓':'⚠'}</span><span>${ok?a:b}</span></div>`;}
 
-// ── CÁLCULO TIPO DE SUBASTA (manual Orenes, pág.10-11 y 33) ───────────────────
+// ── CÁLCULO TIPO DE SUBASTA (manual Orenes, pág.10-11 y 33; arts. 670-671 LEC) ─
 // Importe de adjudicación = 50% tasación (no vivienda habitual) o 70% (vivienda habitual del deudor)
+// Criterio jurídico: "vivienda habitual" (arts. 670-671 LEC) es una condición distinta de "quién ocupa
+// el inmueble". d.viviendaHabitualDeudor (true/false/null) es el dato jurídico específico, confirmado
+// por el usuario o detectado por IA en la escritura/demanda (declaración expresa o coincidencia de
+// domicilio del deudor con la finca). Si no está informado (null/undefined), se usa como respaldo la
+// simplificación por ocupación, asumiendo que ocupación='deudor' probablemente implica vivienda habitual.
 function calcTipoSubasta(d){
-  const esViviendaHabitualDeudor = d.ocupacion === 'deudor';
+  let esViviendaHabitualDeudor, fuente;
+  if(d.viviendaHabitualDeudor===true){esViviendaHabitualDeudor=true;fuente='confirmado';}
+  else if(d.viviendaHabitualDeudor===false){esViviendaHabitualDeudor=false;fuente='confirmado';}
+  else{esViviendaHabitualDeudor=d.ocupacion==='deudor';fuente='estimado';}
   const pct = esViviendaHabitualDeudor ? 0.70 : 0.50;
   const base = d.tasacion || 0;
+  const fuenteTxt = fuente==='confirmado'
+    ? ' (confirmado)'
+    : ' (estimado por ocupación — confírmalo si lo sabes con certeza)';
   return {
     pct,
-    pctLabel: esViviendaHabitualDeudor ? '70% (vivienda habitual del deudor)' : '50% (no vivienda habitual / vacío / arrendado / tercero)',
+    fuente,
+    pctLabel: (esViviendaHabitualDeudor ? '70% (vivienda habitual del deudor)' : '50% (no vivienda habitual / vacío / arrendado / tercero)') + fuenteTxt,
     importeAdjudicacion: Math.round(base * pct)
   };
 }
@@ -1353,6 +1370,8 @@ function editarOperacion(id,col){
   setVal('f-tas',d.tasacion);setVal('f-mer',d.mercado);setVal('f-car',d.cargas);setVal('f-cap2',d.capex);setVal('f-mes',d.meses);
   if(d.liquidez)document.getElementById('f-liq').value=d.liquidez;
   if(d.ocupacion)document.getElementById('f-ocu').value=d.ocupacion;
+  if(d.viviendaHabitualDeudor===true)document.getElementById('f-vivhab').value='si';
+  else if(d.viviendaHabitualDeudor===false)document.getElementById('f-vivhab').value='no';
   setVal('f-obs',d.obs);
   toggleCamposJudiciales();
   if(d.estrategia!=='extrajudicial'){
