@@ -461,19 +461,27 @@ function score(d,c){
   }
   return Math.max(0,Math.min(100,Math.round(s)));
 }
-// ── COSTAS EFECTIVAS (art. 575.1 bis LEC) ────────────────────────────────────
-// Si el inmueble es vivienda habitual del deudor, las costas no pueden superar
-// el 5% del capital reclamado (límite legal frente a terceros en ejecución hipotecaria).
-// Si no es vivienda habitual o no está confirmado, se usan las costas de escritura.
+// ── COSTAS EFECTIVAS ─────────────────────────────────────────────────────────
+// Art. 575.1 bis LEC: vivienda habitual → máx. 5% del capital reclamado
+// Art. 575.1 LEC:     no vivienda habitual → máx. 20% del capital reclamado
+// Se aplica siempre el menor entre el importe de escritura y el tope legal.
 function costasEfectivas(d){
   const costasEscritura=d.costas||0;
+  const capital=d.capital||0;
   if(d.viviendaHabitualDeudor===true){
-    const tope=Math.round((d.capital||0)*0.05);
-    const aplicadas=Math.min(costasEscritura,tope);
+    const tope=Math.round(capital*0.05);
+    const aplicadas=costasEscritura>0?Math.min(costasEscritura,tope):tope;
     const limitado=costasEscritura>tope;
-    return{importe:aplicadas,tope,limitado,fuente:'art. 575.1 bis LEC — vivienda habitual (máx. 5% capital)'};
+    return{importe:aplicadas,tope,pct:5,limitado,fuente:'art. 575.1 bis LEC — vivienda habitual (máx. 5% capital)'};
   }
-  return{importe:costasEscritura,tope:null,limitado:false,fuente:costasEscritura>0?'escritura':'sin costas'};
+  if(d.viviendaHabitualDeudor===false){
+    const tope=Math.round(capital*0.30);
+    const aplicadas=costasEscritura>0?Math.min(costasEscritura,tope):tope;
+    const limitado=costasEscritura>tope;
+    return{importe:aplicadas,tope,pct:30,limitado,fuente:'art. 575.1 LEC — no vivienda habitual (máx. 30% capital)'};
+  }
+  // Sin confirmar: usamos escritura sin límite, pero avisamos
+  return{importe:costasEscritura,tope:null,pct:null,limitado:false,fuente:costasEscritura>0?'escritura (confirma si es vivienda habitual para aplicar límite legal)':'sin costas'};
 }
 
 function calcNego(d,c,sc){
@@ -608,7 +616,7 @@ function formHTML(tipo){
         <div class="field"><label>${esInv?'Precio pagado (€) *':'Precio pagado (€) *'}</label><input type="number" id="f-pre" placeholder="90000"></div>
       </div>
       <div class="g2">
-        <div class="field"><label>Costas escritura (€) <span style="font-weight:400;color:#8A9BB0;text-transform:none;font-size:9px">de nota simple · si vivienda habitual se aplica límite 5% (art. 575 LEC)</span></label><input type="number" id="f-costas" placeholder="26814"></div>
+        <div class="field"><label>Costas escritura (€) <span style="font-weight:400;color:#8A9BB0;text-transform:none;font-size:9px">de nota simple · viv. habitual: límite 5% · no habitual: límite 30% (art. 575 LEC)</span></label><input type="number" id="f-costas" placeholder="26814"></div>
         <div class="field"><label>Fecha vencimiento anticipado</label><input type="date" id="f-fecha-acta"></div>
       </div>
       <div id="f-bloque-judicial" style="display:none">
@@ -964,7 +972,7 @@ function renderNego(d,c,sc,cid){
         ${n.baseB>0?`<div style="background:#fff;border:0.5px solid #DDE3EC;border-radius:7px;padding:9px 11px">
           <div style="font-size:10px;color:#8A9BB0;margin-bottom:5px;font-weight:600">BASE B · Cap. + Int. + Costas</div>
           <div style="font-size:11px;color:#4A5568">Deuda: <strong>€${fmt(n.baseB)}</strong></div>
-          ${n.ce.limitado?`<div style="font-size:10px;color:#854F0B;margin-top:3px;line-height:1.4">⚖️ Costas limitadas a €${fmt(n.ce.tope)} (5% capital · ${n.ce.fuente})</div>`:`<div style="font-size:10px;color:#8A9BB0;margin-top:3px">${n.ce.fuente}</div>`}
+          ${n.ce.limitado?`<div style="font-size:10px;color:#854F0B;margin-top:3px;line-height:1.4">⚖️ Costas limitadas a €${fmt(n.ce.tope)} (${n.ce.pct}% capital · ${n.ce.fuente})</div>`:`<div style="font-size:10px;color:#8A9BB0;margin-top:3px">${n.ce.fuente}</div>`}
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:6px">
             <div style="text-align:center"><div style="font-size:13px;font-weight:700;color:#7A1A1A">${n.qMinB}%</div><div style="font-size:9px;color:#8A9BB0">Mínimo</div></div>
             <div style="text-align:center"><div style="font-size:13px;font-weight:700;color:#2A5E12">${n.qOptB}%</div><div style="font-size:9px;color:#8A9BB0">Óptimo</div></div>
