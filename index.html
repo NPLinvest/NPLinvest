@@ -565,21 +565,18 @@ function portalesHTML(d){
 }
 
 // ── MAPA ──────────────────────────────────────────────────────────────────────
-async function geocodificar(addr,mapId){
-  try{
-    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&countrycodes=es&limit=1`);
-    const data=await r.json();
-    if(!data.length)return;
-    const lat=parseFloat(data[0].lat),lng=parseFloat(data[0].lon);
-    setTimeout(()=>{
-      if(mapInst){mapInst.remove();mapInst=null;}
-      const el=document.getElementById(mapId);if(!el)return;
-      mapInst=L.map(mapId).setView([lat,lng],15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(mapInst);
-      L.marker([lat,lng]).addTo(mapInst).bindPopup(addr).openPopup();
-      setTimeout(()=>mapInst&&mapInst.invalidateSize(),400);
-    },300);
-  }catch(e){}
+function geocodificar(addr,mapId){
+  // Google Maps embed — sin API key, gratuito, interactivo
+  const el=document.getElementById(mapId);
+  if(!el||!addr)return;
+  const q=encodeURIComponent(addr);
+  el.innerHTML=`<iframe
+    src="https://maps.google.com/maps?q=${q}&t=m&z=16&output=embed&hl=es"
+    width="100%" height="100%"
+    style="border:none;border-radius:10px;display:block"
+    allowfullscreen loading="lazy"
+    referrerpolicy="no-referrer-when-downgrade">
+  </iframe>`;
 }
 
 // ── FORMULARIO ────────────────────────────────────────────────────────────────
@@ -899,6 +896,10 @@ function guardarOp(tipo){
     </div>
     <div style="margin-top:5px;padding:9px 13px;background:#F7F9FC;border-radius:7px;display:flex;justify-content:space-between"><div class="kpi-tooltip" style="font-size:10px;color:#8A9BB0;text-transform:uppercase">VNR <span class="tip-icon">ℹ</span><div class="tip-box">Valor Neto Realizable = Valor mercado − cargas anteriores − capex reforma.</div></div><div style="font-size:14px;font-weight:700">€${fmt(c.vn)}</div></div>
     ${d.metros?`<div style="margin-top:5px;padding:9px 13px;background:#F7F9FC;border-radius:7px;display:flex;justify-content:space-between"><div style="font-size:10px;color:#8A9BB0;text-transform:uppercase">€/m²</div><div style="font-size:14px;font-weight:700">€${fmt(c.mercadoVal/d.metros)}/m²</div></div>`:''}
+    ${d.direccion?`<div style="margin-top:6px;display:flex;gap:8px">
+      <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.direccion)}" target="_blank" class="btn btn-out btn-xs" style="text-decoration:none">🗺 Abrir en Google Maps</a>
+      <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(d.direccion)}" target="_blank" class="btn btn-out btn-xs" style="text-decoration:none">🧭 Cómo llegar</a>
+    </div>`:''}
     ${portalesHTML(d)}`;
   renderNego(d,c,sc,'f-nego');
   const dict=generarDictamen(d,c,sc);
@@ -1401,7 +1402,11 @@ function abrirFicha(id,col){
         ${d.banos?`<span class="badge bgray">${d.banos} baños</span>`:''}
       </div>
     </div>
-    ${d.direccion?`<div id="ficha-map-el" style="height:220px;border-radius:10px;border:0.5px solid #DDE3EC;"></div>`:'<div class="empty">Sin dirección</div>'}
+    ${d.direccion?`<div id="ficha-map-el" style="height:320px;border-radius:10px;border:0.5px solid #DDE3EC;overflow:hidden;position:relative;"></div>`:'<div class="empty">Sin dirección</div>'}
+    ${d.direccion?`<div style="margin-top:6px;display:flex;gap:8px">
+      <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.direccion)}" target="_blank" class="btn btn-out btn-xs" style="text-decoration:none">🗺 Abrir en Google Maps</a>
+      <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(d.direccion)}" target="_blank" class="btn btn-out btn-xs" style="text-decoration:none">🧭 Cómo llegar</a>
+    </div>`:''}
     ${portalesHTML(d)}`;
   if(d.direccion)geocodificar(d.direccion,'ficha-map-el');
 
@@ -1455,7 +1460,7 @@ function switchTab(name,btn){
   ['resumen','fiscal','negociacion','inmueble','gastos','judicial','dictamen'].forEach(n=>{
     const el=document.getElementById('ft-'+n);if(el)el.style.display=n===name?'block':'none';
   });
-  if(name==='inmueble')setTimeout(()=>mapInst&&mapInst.invalidateSize(),300);
+  if(name==='inmueble'&&mapInst===null){const d_ref=document.getElementById('ficha-map-el');}
 }
 
 // ── SIMULAR VENTA (sin marcar como finalizada) ────────────────────────────────
@@ -1640,7 +1645,7 @@ function closeMod(id,e){
   if(e&&e.target!==document.getElementById(id))return;
   document.getElementById(id).classList.remove('open');
   document.body.style.overflow='';
-  if(id==='ficha-overlay'&&mapInst){mapInst.remove();mapInst=null;}
+  if(id==='ficha-overlay')mapInst=null;
 }
 
 function eliminarOp(id,col){
