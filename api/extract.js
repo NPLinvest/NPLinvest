@@ -15,11 +15,16 @@ export default async function handler(req, res) {
     const parts = buffer.toString('binary').split('--' + boundary);
     const docs = [];
     let count = 0;
+    let modo = 'extraccion';
 
     for (const part of parts) {
       if (part.includes('name="count"')) {
         const match = part.match(/\r\n\r\n(\d+)/);
         if (match) count = parseInt(match[1]);
+      }
+      if (part.includes('name="modo"')) {
+        const match = part.match(/\r\n\r\n(\w+)/);
+        if (match) modo = match[1].trim();
       }
       if (part.includes('name="doc_')) {
         const jsonMatch = part.match(/\r\n\r\n({.*})/s);
@@ -33,6 +38,22 @@ export default async function handler(req, res) {
 
     if (!docs.length) {
       return res.status(400).json({ error: 'No documents provided' });
+    }
+
+    // Validar tamaño total — Anthropic acepta hasta ~32MB por request en base64,
+    // pero en Vercel free tier (10s timeout) documentos grandes provocan timeout antes de eso.
+    // Límite conservador: 15MB de base64 combinado (~11MB de PDF real).
+    const MAX_TOTAL_B64_CHARS = 15 * 1024 * 1024 * (4/3); // ~15MB de binario en base64
+    const totalSize = docs.reduce((sum, d) => sum + (d.b64?.length || 0), 0);
+    if (totalSize > MAX_TOTAL_B64_CHARS) {
+      return res.status(413).json({
+        error: 'Documentos demasiado grandes para procesar en una sola petición. Sube menos documentos o de menor tamaño (máx. ~11MB combinados).'
+      });
+    }
+    if (docs.length > 4) {
+      return res.status(413).json({
+        error: 'Máximo 4 documentos por extracción para evitar timeout. Procesa el resto en otra tanda.'
+      });
     }
 
     // Construir contenido para Claude
@@ -51,9 +72,7 @@ export default async function handler(req, res) {
       }
     }
 
-    content.push({
-      type: 'text',
-      text: `Eres un abogado experto en inversión NPL en España. Analiza estos documentos de una operación hipotecaria y extrae los datos para rellenar una ficha de inversión.
+    const PROMPT_EXTRACCION = `Eres un abogado experto en inversión NPL en España. Analiza estos documentos de una operación hipotecaria y extrae los datos para rellenar una ficha de inversión.
 
 Responde ÚNICAMENTE con un objeto JSON con exactamente estas claves (usa null si no encuentras el dato):
 {
@@ -83,7 +102,40 @@ Instrucciones específicas:
 - Si hay cláusulas suelo, intereses de demora elevados o vencimiento anticipado agresivo, indícalo en observaciones y pon clausulas: "pendiente".
 - Si la vivienda aparece como habitual del deudor, pon tipo: "hipotecario_primera".
 
-No incluyas nada más que el JSON. Sin explicaciones, sin markdown, sin backticks.`
+No incluyas nada más que el JSON. Sin explicaciones, sin markdown, sin backticks.`;
+
+    const PROMPT_RESOLUCION = `Eres un procurador/abogado experto en ejecuciones hipotecarias en España. Analiza esta resolución judicial (auto, decreto, diligencia de ordenación, providencia, notificación) y extrae la información clave para generar un recordatorio procesal.
+
+Responde ÚNICAMENTE con un objeto JSON con exactamente estas claves (usa null si no encuentras el dato):
+{
+  "tipoResolucion": "auto" | "decreto" | "diligencia" | "providencia" | "notificacion" | "sentencia" | "otro",
+  "organoJudicial": string (nombre completo del juzgado que dicta la resolución),
+  "numeroProcedimiento": string (número de autos/procedimiento, ej: "123/2024"),
+  "fechaResolucion": string (fecha de la resolución en formato YYYY-MM-DD),
+  "fechaNotificacion": string (fecha de notificación si consta, formato YYYY-MM-DD, si no usar fechaResolucion),
+  "resumenContenido": string (máximo 100 palabras resumiendo qué dice la resolución y por qué se dicta),
+  "actuacionRequerida": string (qué debe hacer el procurador/abogado: personarse, contestar, recurrir, preparar pujas, nada, etc.),
+  "plazoDias": número (días de plazo para actuar desde la notificación; null si no hay plazo o es informativa),
+  "fechaLimite": string (fecha límite calculada sumando plazoDias a fechaNotificacion en días hábiles aproximados, formato YYYY-MM-DD; null si no aplica),
+  "urgencia": "alta" | "media" | "baja" | "informativa",
+  "faseDetectada": "prejudicial" | "monitorio" | "ejecucion_admitida" | "tasacion_hecha" | "subasta_senalada" (la fase procesal que se infiere tras esta resolución),
+  "fechaSubasta": string (si la resolución señala fecha de subasta, formato YYYY-MM-DD; null si no aplica)
+}
+
+Instrucciones específicas:
+- Si es un Auto de Admisión a Trámite / Despacho de Ejecución: actuacionRequerida = "Personarse en el procedimiento", plazoDias = 10, urgencia = "alta".
+- Si es un Decreto de Convocatoria de Subasta: actuacionRequerida = "Preparar documentación para pujas, verificar cargas posteriores", urgencia = "alta", extraer fechaSubasta si consta.
+- Si es una notificación de Oposición del deudor: actuacionRequerida = "Revisar motivos de oposición y preparar contestación/impugnación", plazoDias = 5, urgencia = "alta".
+- Si es un Requerimiento de pago al deudor: actuacionRequerida = "Monitorizar plazo de pago del deudor", plazoDias = 10, urgencia = "media".
+- Si es una Certificación de cargas o Diligencia de ordenación puramente informativa sin plazo de respuesta: urgencia = "informativa", actuacionRequerida = "Sin actuación requerida — informativo".
+- Si detectas alegación de cláusulas abusivas por el deudor: menciónalo expresamente en resumenContenido.
+- Las fechas límite deben calcularse en días hábiles aproximados (excluyendo sábados, domingos y agosto si el plazo cae total o parcialmente en ese mes).
+
+No incluyas nada más que el JSON. Sin explicaciones, sin markdown, sin backticks.`;
+
+    content.push({
+      type: 'text',
+      text: modo === 'resolucion' ? PROMPT_RESOLUCION : PROMPT_EXTRACCION
     });
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
