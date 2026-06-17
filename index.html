@@ -397,15 +397,12 @@ function calcFiscal(d,gastos,cantidadObtenida){
   const totalGastos=gastos.reduce((a,g)=>a+(g.importe||0),0);
   const ccaa=detectarCCAA(d.direccion||'');
   const itpPct=getITP(ccaa);
-  // ITP solo si no está ya en gastos
   const yaHayITP=gastos.some(g=>g.categoria==='itp');
   const itpImporte=yaHayITP?0:Math.round(precio*itpPct/100);
   const totalCostes=precio+totalGastos+itpImporte;
   const baseImponible=Math.max(0,(cantidadObtenida||0)-totalCostes);
-  // IS 25%
   const cuotaIS=Math.round(baseImponible*0.25);
   const beneficioIS=baseImponible-cuotaIS;
-  // IRPF escala ganancias patrimoniales 2024
   let cuotaIRPF=0;
   let base=baseImponible;
   const tramos=[[6000,0.19],[44000,0.21],[150000,0.23],[100000,0.27],[Infinity,0.28]];
@@ -440,7 +437,6 @@ function score(d,c){
   if(d.clausulas==='pendiente')s-=20;if(d.epi==='alto')s-=10;if(c.rs<0)s-=15;
   if(d.fase==='subasta_senalada'||d.fase==='tasacion_hecha')s+=5;
   if(d.liquidez==='alta')s+=5;if(d.liquidez==='baja')s-=10;
-  // Penalización por plazo judicial
   if(d.estrategia!=='extrajudicial'&&d.juzgado){
     const p=getPlazosJuzgado(d.juzgado,d.direccion);
     const total=p.total||30;
@@ -727,7 +723,6 @@ function actualizarJuzgadoSugerido(){
       sel.appendChild(opt);
     });
     if(juzgados.length&&!curVal){
-      // Sugerir el primero de la provincia detectada como orientativo
       sel.value='';
     }
   }
@@ -784,13 +779,11 @@ function guardarOp(tipo){
   d.ai_dictamen=dict;
 
   if(esEdicion){
-    // Actualizar en la colección correspondiente (puede cambiar de inversión a estudio o viceversa si se cambió tipoOp, pero aquí tipo viene fijo del formulario abierto)
     const lista=editandoCol==='inversion'?loadInv():loadEst();
     const idx=lista.findIndex(o=>o.id===editandoId);
     if(idx>=0){
       lista[idx]=d;
       if(editandoCol==='inversion')saveInv(lista);else saveEst(lista);
-      // Si cambió la referencia, actualizar gastos y resoluciones/tareas asociadas
       if(refAnterior&&refAnterior!==ref){
         const gastos=loadGastos().map(g=>g.opRef===refAnterior?{...g,opRef:ref}:g);saveGastos(gastos);
         const resoluciones=loadResoluciones().map(r=>r.opRef===refAnterior?{...r,opRef:ref}:r);saveResoluciones(resoluciones);
@@ -804,7 +797,6 @@ function guardarOp(tipo){
   }
   updatePill();
 }
-
 // ── RENDER NEGOCIACIÓN ────────────────────────────────────────────────────────
 function renderNego(d,c,sc,cid){
   const n=calcNego(d,c,sc);
@@ -846,56 +838,99 @@ function renderNego(d,c,sc,cid){
     ${obs?`<div style="background:#F7F9FC;border:0.5px solid #DDE3EC;border-radius:8px;padding:11px 13px;margin-top:8px"><div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Tu situación</div><div style="font-size:12px;color:#0A1628;line-height:1.7">${analObs}</div></div>`:''}
     <div style="margin-top:11px"><div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Factores de riesgo</div>
     ${factoresRiesgoHtml}</div>
-    ${(d.estrategia==='extrajudicial'||d.estrategia==='dual')?renderViasExtrajudiciales(d,c):''}`;
+    ${renderVias(d,c)}`;
 }
 function ri(ok,a,b){const c=ok?'r-ok':'r-warn';return`<div class="riesgo-item ${c}"><span style="font-size:13px">${ok?'✓':'⚠'}</span><span>${ok?a:b}</span></div>`;}
 
-// ── ANÁLISIS DE VÍAS EXTRAJUDICIALES ──────────────────────────────────────────
-function analizarViasExtrajudiciales(d,c){
+// ── CÁLCULO TIPO DE SUBASTA (manual Orenes, pág.10-11 y 33) ───────────────────
+// Importe de adjudicación = 50% tasación (no vivienda habitual) o 70% (vivienda habitual del deudor)
+function calcTipoSubasta(d){
+  const esViviendaHabitualDeudor = d.ocupacion === 'deudor';
+  const pct = esViviendaHabitualDeudor ? 0.70 : 0.50;
+  const base = d.tasacion || 0;
+  return {
+    pct,
+    pctLabel: esViviendaHabitualDeudor ? '70% (vivienda habitual del deudor)' : '50% (no vivienda habitual / vacío / arrendado / tercero)',
+    importeAdjudicacion: Math.round(base * pct)
+  };
+}
+
+// ── ANÁLISIS DE RENTABILIDAD VS UMBRAL ORENES (manual pág.46 y 53) ────────────
+// Filtro operativo del manual: rentabilidad mínima objetivo 40%, descarte automático <30% si no inmediata.
+// Decisión de producto: NO se descarta aquí — se informa, y la decisión queda al criterio del abogado
+// en función del riesgo y del tiempo que lleve abierta la operación (salir con menos margen puede compensar).
+function analizarRentabilidadOrenes(d,c){
+  const roi = c.roi; // ROI bruto ya calculado por calc()
+  const dentroDeRango = roi >= 30;
+  const dentroDeObjetivo = roi >= 40;
+  let mensaje;
+  if(dentroDeObjetivo){
+    mensaje = `ROI bruto estimado ${roi.toFixed(1)}% — dentro del objetivo de rentabilidad de Orenes (≥40%).`;
+  } else if(dentroDeRango){
+    mensaje = `ROI bruto estimado ${roi.toFixed(1)}% — por debajo del objetivo (40%) pero dentro del rango mínimo operativo (≥30%).`;
+  } else {
+    mensaje = `⚠ ROI bruto estimado ${roi.toFixed(1)}% — POR DEBAJO del rango de referencia de Orenes (30-40% mínimo). El manual descarta automáticamente operaciones bajo este umbral si la rentabilidad no es inmediata. No obstante, esto no implica descartar la operación: valora si el tiempo que lleva abierta, el riesgo acumulado o la necesidad de liquidez justifican cerrar con menor margen.`;
+  }
+  return{roi,dentroDeRango,dentroDeObjetivo,mensaje};
+}
+
+// ── ANÁLISIS DE LAS 9 VÍAS DE LIQUIDEZ Y RENTABILIDAD (manual Orenes §3.4) ────
+function analizarVias(d,c){
   const obs=(d.obs||'').toLowerCase();
   const hayCargasPosteriores=(d.cargas||0)>0;
   const vacio=d.ocupacion==='vacio';
-  const ocupaDeudor=d.ocupacion==='deudor';
   const menosionaInteres=obs.includes('interesad')||obs.includes('quiere comprar')||obs.includes('familiar');
-  const mencionaQuita=obs.includes('quita')||obs.includes('descuento')||obs.includes('negocia');
   const mencionaVenta=obs.includes('vender')||obs.includes('venta')||obs.includes('comprador');
   const mencionaResistencia=obs.includes('no quiere')||obs.includes('se niega')||obs.includes('no responde')||obs.includes('no contesta');
+  const esExtrajudicialPura=d.estrategia==='extrajudicial';
+  const faseEsSubastaSenalada=d.fase==='subasta_senalada';
 
-  const vias=[];
+  // ── BLOQUE 1: VÍAS DE ACUERDO (6) — siempre evaluadas, sea cual sea la estrategia ──
+  const viasAcuerdo=[];
 
-  // 1. Dación en pago — requiere NO cargas posteriores (si las hay, se arrastran y no es viable)
-  vias.push({
+  viasAcuerdo.push({
+    nombre:'Acuerdo de quita con el deudor',
+    viable:true,
+    motivo:'El deudor paga un importe acordado (inferior a la deuda total) y se cancela la hipoteca. Vía siempre disponible si el deudor tiene capacidad de pago, aunque sea parcial, y voluntad de conservar la vivienda.',
+    prioridad:3
+  });
+
+  viasAcuerdo.push({
+    nombre:'Venta del crédito al deudor, familiar o segundo acreedor/avalista',
+    viable:true,
+    motivo:menosionaInteres
+      ?'Detectado posible interés de un familiar o tercero en las observaciones — vía con alta probabilidad de cierre rápido.'
+      :'Se vende el crédito (no la vivienda) al propio deudor, a un familiar, o a un segundo acreedor hipotecante/avalista, por debajo del importe total de la deuda. Siempre disponible si hay alguien del entorno del deudor dispuesto a asumir la cancelación.',
+    prioridad:menosionaInteres?1:3
+  });
+
+  viasAcuerdo.push({
+    nombre:'Venta del crédito a otro inversor o comprador final de la zona',
+    viable:true,
+    motivo:'Se vende el crédito (el derecho de cobro, no el inmueble) a un tercero inversor por un importe más elevado que el de adquisición, desinvirtiendo antes de agotar el proceso judicial y trasladando el plazo y el riesgo de ejecución al comprador. Vía siempre disponible como opción de liquidez rápida.',
+    prioridad:3
+  });
+
+  viasAcuerdo.push({
     nombre:'Dación en pago',
     viable:!hayCargasPosteriores,
     motivo:!hayCargasPosteriores
       ?'Sin cargas posteriores detectadas — el deudor puede entregar la vivienda y extinguir la deuda de forma directa, evitando la subasta.'
-      :'Existen cargas posteriores registradas — la dación en pago no las cancela, por lo que tú asumirías esas cargas al recibir la propiedad. Vía no recomendable salvo que el importe de esas cargas sea asumible.',
+      :'Existen cargas posteriores registradas — la dación en pago no las cancela (solo la subasta tiene efecto purgativo), por lo que asumirías esas cargas al recibir la propiedad. Vía no recomendable salvo que el importe de esas cargas sea asumible.',
     prioridad:!hayCargasPosteriores?1:5
   });
 
-  // 2. Venta del crédito al deudor/familiar con quita
-  vias.push({
-    nombre:'Venta del crédito al deudor o familiar (con quita)',
-    viable:true,
-    motivo:menosionaInteres
-      ?'Detectado posible interés de un familiar o tercero en las observaciones — vía con alta probabilidad de cierre rápido.'
-      :'Siempre disponible si el deudor o su entorno quiere conservar la vivienda. Ofrece cancelación de la deuda total por un importe pactado, normalmente entre el precio de compra del crédito +20-40% y el valor de mercado.',
-    prioridad:menosionaInteres?1:3
-  });
-
-  // 3. Venta de la vivienda por el deudor, pago al cierre
-  vias.push({
+  viasAcuerdo.push({
     nombre:'Venta por el deudor con pago al cierre',
-    viable:vacio===false,
+    viable:!vacio,
     motivo:mencionaVenta
       ?'El deudor ya parece estar gestionando una venta — facilítale el proceso fijando el importe de cancelación pactado, cobrable en el momento del otorgamiento de la escritura de compraventa.'
       :'Viable si el deudor tiene capacidad de gestionar la venta y disposición a colaborar. El diferencial entre lo pactado contigo y el precio de venta es para el deudor, lo que incentiva su cooperación.',
     prioridad:mencionaVenta?1:3
   });
 
-  // 4. Acta notarial de exoneración de cargas con poder de venta
-  vias.push({
-    nombre:'Acta notarial de exoneración con poder de venta',
+  viasAcuerdo.push({
+    nombre:'Acta notarial de exoneración de cargas con poder de venta',
     viable:!hayCargasPosteriores,
     motivo:!hayCargasPosteriores
       ?'Permite que tú gestiones directamente la venta del inmueble sin pasar por subasta, cancelando cargas en el momento de la venta a comprador final. Requiere colaboración notarial del deudor.'
@@ -903,22 +938,60 @@ function analizarViasExtrajudiciales(d,c){
     prioridad:!hayCargasPosteriores?2:5
   });
 
-  // Filtrar solo viables y ordenar por prioridad
-  const viasViables=vias.filter(v=>v.viable).sort((a,b)=>a.prioridad-b.prioridad);
-  const viasDescartadas=vias.filter(v=>!v.viable);
+  // ── BLOQUE 2: VÍAS DE SUBASTA (3) — solo si la estrategia no es extrajudicial pura ──
+  const viasSubasta=[];
+  if(!esExtrajudicialPura){
+    const tipoSubasta=calcTipoSubasta(d);
+
+    viasSubasta.push({
+      nombre:'Pujas en subasta',
+      viable:faseEsSubastaSenalada,
+      motivo:faseEsSubastaSenalada
+        ?'Fase de subasta señalada. Como acreedor, puedes pujar sin desembolso hasta el importe de la deuda. Si un tercero puja, cobras el diferencial entre el precio de compra del crédito y el importe de la deuda (incluyendo hasta el 30% de intereses y costas).'
+        :'Requiere fase procesal de subasta señalada. Aún no se ha llegado a esa fase — esta vía se activará cuando se señale fecha de subasta.',
+      prioridad:1
+    });
+
+    viasSubasta.push({
+      nombre:'Cesión de remate a tercero',
+      viable:faseEsSubastaSenalada,
+      motivo:faseEsSubastaSenalada
+        ?'Fase de subasta señalada. Si no hay pujas o son bajas, puedes adjudicarte el remate y cederlo a un comprador final ya localizado, evitando pagar tú el impuesto de adjudicación (lo asume el cesionario) y agilizando la salida.'
+        :'Requiere fase procesal de subasta señalada para materializarse, aunque conviene ir buscando comprador final con antelación, ya que el manual recomienda tenerlo identificado antes de la celebración de la subasta.',
+      prioridad:2
+    });
+
+    viasSubasta.push({
+      nombre:'Adjudicación y venta en plena propiedad',
+      viable:true,
+      motivo:`Vía residual: si no hay postores en la subasta, te adjudicas el inmueble por el importe de adjudicación (tipo de subasta: ${tipoSubasta.pctLabel} de la tasación hipotecaria${d.tasacion?` ≈ €${Math.round(tipoSubasta.importeAdjudicacion).toLocaleString('es-ES')}`:''}) y procedes a su venta en mercado abierto. Aplicable en cualquier fase del proceso judicial, como horizonte final si no se materializa ninguna otra vía.`,
+      prioridad:3
+    });
+  }
+
+  const todasLasVias=[...viasAcuerdo,...viasSubasta];
+  const viasViables=todasLasVias.filter(v=>v.viable).sort((a,b)=>a.prioridad-b.prioridad);
+  const viasDescartadas=todasLasVias.filter(v=>!v.viable);
 
   let alertaResistencia='';
   if(mencionaResistencia){
-    alertaResistencia='\n⚠️ Se detecta posible falta de colaboración del deudor en las observaciones. Si no hay respuesta en plazo razonable, valora escalar a estrategia Dual (mantener vía extrajudicial abierta mientras se inicia la vía judicial en paralelo) para no perder posición negociadora.';
+    alertaResistencia='⚠️ Se detecta posible falta de colaboración del deudor en las observaciones. Si no hay respuesta en plazo razonable, valora escalar a estrategia Dual (mantener vía de acuerdo abierta mientras se inicia o continúa la vía judicial en paralelo) para no perder posición negociadora.';
   }
 
-  return{viasViables,viasDescartadas,alertaResistencia,hayCargasPosteriores};
+  const analisisRentabilidad=analizarRentabilidadOrenes(d,c);
+
+  return{viasViables,viasDescartadas,alertaResistencia,hayCargasPosteriores,esExtrajudicialPura,analisisRentabilidad};
 }
 
-function renderViasExtrajudiciales(d,c){
-  const analisis=analizarViasExtrajudiciales(d,c);
+function renderVias(d,c){
+  const analisis=analizarVias(d,c);
+  const ar=analisis.analisisRentabilidad;
+  const arColor=ar.dentroDeObjetivo?'#2A5E12':ar.dentroDeRango?'#7A4A0A':'#7A1A1A';
+  const arBg=ar.dentroDeObjetivo?'#EBF7E2':ar.dentroDeRango?'#FEF3E2':'#FEECEC';
   if(!analisis.viasViables.length)return'';
-  return`<div style="margin-top:11px"><div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🤝 Vías extrajudiciales recomendadas (ordenadas por viabilidad)</div>
+  return`<div style="margin-top:11px">
+    <div style="background:${arBg};border:0.5px solid ${arColor}40;border-radius:8px;padding:9px 12px;margin-bottom:9px;font-size:12px;color:${arColor};line-height:1.6"><strong>Rentabilidad vs. criterio Orenes:</strong> ${ar.mensaje}</div>
+    <div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🤝 Vías de liquidez y rentabilidad recomendadas (de 9 posibles, ordenadas por viabilidad)</div>
     ${analisis.viasViables.map((v,i)=>`<div style="background:${i===0?'#EBF7E2':'#F7F9FC'};border:0.5px solid ${i===0?'#B2D98A':'#DDE3EC'};border-radius:9px;padding:11px 13px;margin-bottom:7px">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
         ${i===0?'<span class="badge bok">RECOMENDADA</span>':''}
@@ -1014,11 +1087,9 @@ function generarDictamen(d,c,sc){
     if((pj.total||0)>36)r.push(`• Plazo judicial estimado elevado: ~${pj.total} meses (${fuenteTxt}) — penaliza score y TIR real`);
     plazoTxt=`\nPLAZO JUDICIAL${d.juzgado?` (${d.juzgado})`:''}: Admisión ~${pj.admision||'?'}m · Subasta ~${pj.subasta||'?'}m · Total ~${pj.total||'?'}m (${fuenteTxt})\n`;
   }
-  if(d.estrategia==='extrajudicial'||d.estrategia==='dual'){
-    const analisis=analizarViasExtrajudiciales(d,c);
-    if(analisis.viasViables.length){
-      viasTxt=`\nVÍAS EXTRAJUDICIALES VIABLES:\n${analisis.viasViables.map((v,i)=>`${i+1}. ${v.nombre}${i===0?' (RECOMENDADA)':''}: ${v.motivo}`).join('\n')}\n`;
-    }
+  const analisisVias=analizarVias(d,c);
+  if(analisisVias.viasViables.length){
+    viasTxt=`\nVÍAS DE LIQUIDEZ Y RENTABILIDAD VIABLES (manual Orenes, de 9 posibles):\n${analisisVias.viasViables.map((v,i)=>`${i+1}. ${v.nombre}${i===0?' (RECOMENDADA)':''}: ${v.motivo}`).join('\n')}\n\n${analisisVias.analisisRentabilidad.mensaje}\n`;
   }
   if(!r.length)r.push('• Sin riesgos críticos identificados');
   const n=calcNego(d,c,sc);
@@ -1212,7 +1283,6 @@ function finalizarOp(id,col){
   lista[idx].tipoCobro=tipoCobro;
   lista[idx].fechaCierre=fechaCierre;
   if(col==='inversion')saveInv(lista);else saveEst(lista);
-  // Reabrir ficha para refrescar
   abrirFicha(id,col);
   rDash();updatePill();
 }
@@ -1271,7 +1341,6 @@ function editarOperacion(id,col){
   document.getElementById('form-body').innerHTML=formHTML(col);
   document.getElementById('form-overlay').classList.add('open');
   document.body.style.overflow='hidden';
-  // Precargar todos los campos
   setVal('f-ref',d.ref);
   document.getElementById('f-tipo').value=d.tipo||'hipotecario_segunda';
   document.getElementById('f-est').value=d.estrategia||'extrajudicial';
@@ -1293,7 +1362,6 @@ function editarOperacion(id,col){
     actualizarJuzgadoSugerido();
     if(d.juzgado)setTimeout(()=>{const sel=document.getElementById('f-juzgado');if(sel)sel.value=d.juzgado;mostrarPlazosPreview();},50);
   }
-  // Remover campos en blanco con valores AI-filled visuales (no aplica aquí, es edición manual)
 }
 function limpiarForm(){document.getElementById('form-body').innerHTML=formHTML(curFormTipo);curDocs=[];toggleCamposJudiciales();}
 function closeMod(id,e){
@@ -1435,7 +1503,6 @@ async function analizarResolucion(opRef){
     statusEl.textContent=`✓ Resolución analizada: ${data.tipoResolucion||'documento'}${data.fechaLimite?` — recordatorio creado para ${new Date(data.fechaLimite).toLocaleDateString('es-ES')}`:''}`;
     curResDoc=null;
 
-    // Refrescar ficha si está abierta
     const inv=loadInv();const opInv=inv.find(o=>o.ref===opRef);
     if(opInv)abrirFicha(opInv.id,'inversion');
     updatePillTareas();
