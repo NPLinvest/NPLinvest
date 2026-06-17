@@ -462,24 +462,45 @@ function score(d,c){
   return Math.max(0,Math.min(100,Math.round(s)));
 }
 function calcNego(d,c,sc){
-  const totalInv=(d.precio||0)+loadGastos().filter(g=>g.opRef===d.ref).reduce((a,g)=>a+(g.importe||0),0);
+  // coste total real = precio pagado por el crédito + todos los gastos registrados
+  const gastosTotal=loadGastos().filter(g=>g.opRef===d.ref).reduce((a,g)=>a+(g.importe||0),0);
+  const totalInv=(d.precio||0)+gastosTotal;
+
+  // márgenes mínimos según score de riesgo
   const margenMin=sc>=80?0.10:sc>=60?0.15:0.20;
   const margenMinPct=sc>=80?10:sc>=60?15:20;
-  const sueloPorInv=totalInv>0?Math.round(totalInv*(1+margenMin)):0;
-  const precioMax=c.pm;
-  const precioMinCol=Math.round(c.vn*(0.35+(1-sc/100)*0.08));
-  const precioMin=Math.max(sueloPorInv,precioMinCol);
-  const precioOptObj=totalInv>0?Math.round(totalInv*1.20):Math.round(c.vn*0.48);
-  const precioOpt=Math.min(precioMax,Math.max(precioOptObj,Math.round(c.vn*0.45),precioMin));
-  const primeraOferta=Math.round(Math.max(precioMin*1.05,precioOpt*0.90));
+
+  // MÍNIMO: coste total + margen mínimo de riesgo
+  const precioMin=totalInv>0?Math.round(totalInv*(1+margenMin)):0;
+
+  // ÓPTIMO: coste total + 30% ROI objetivo, techo en 85% del VNR
+  const precioOptBruto=totalInv>0?Math.round(totalInv*1.30):0;
+  const techoOptimo=c.vn>0?Math.round(c.vn*0.85):precioOptBruto;
+  const precioOpt=Math.min(precioOptBruto,Math.max(techoOptimo,precioMin));
+
+  // MÁXIMO: coste total + 50%, techo en 95% del VNR
+  const precioMaxBruto=totalInv>0?Math.round(totalInv*1.50):0;
+  const techoMaximo=c.vn>0?Math.round(c.vn*0.95):precioMaxBruto;
+  const precioMax=Math.min(precioMaxBruto,Math.max(techoMaximo,precioOpt));
+
+  // PRIMERA OFERTA: óptimo + 10% de colchón negociador, redondeado a 500€
+  const primeraOferta=Math.round(Math.min(precioOpt*1.10,precioMax)/500)*500;
+
+  // quitas sobre capital nominal
   const qMin=d.capital>0?Math.round((1-precioMin/d.capital)*100):0;
   const qOpt=d.capital>0?Math.round((1-precioOpt/d.capital)*100):0;
   const qMax=d.capital>0?Math.round((1-precioMax/d.capital)*100):0;
+
+  // ROI implícito de cada nivel sobre coste total
+  const roiMin=totalInv>0?Math.round((precioMin/totalInv-1)*100):0;
+  const roiOpt=totalInv>0?Math.round((precioOpt/totalInv-1)*100):0;
+  const roiMax=totalInv>0?Math.round((precioMax/totalInv-1)*100):0;
+
   let est,estClass,estTxt;
   if(sc>=80){est='Estrategia conservadora';estClass='estrat-c';estTxt='Riesgo bajo — mantente firme. Concede solo ante contrapropuesta razonable.';}
   else if(sc>=60){est='Estrategia moderada';estClass='estrat-m';estTxt='Riesgo medio — flexible pero con límite claro. No alargues más de 30 días.';}
   else{est='Estrategia agresiva';estClass='estrat-a';estTxt='Riesgo alto — el precio debe compensar contingencias. Resuelve riesgos antes de cerrar.';}
-  return{precioMin,precioOpt,precioMax,primeraOferta,qMin,qOpt,qMax,est,estClass,estTxt,margenMinPct,totalInv};
+  return{precioMin,precioOpt,precioMax,primeraOferta,qMin,qOpt,qMax,roiMin,roiOpt,roiMax,est,estClass,estTxt,margenMinPct,totalInv,gastosTotal};
 }
 function rc(r){return r>=15?'#2A5E12':r>=0?'#7A4A0A':'#7A1A1A';}
 function sbadge(s){if(s>=80)return`<span class="badge bok">✓ ${s}</span>`;if(s>=60)return`<span class="badge bwarn">~ ${s}</span>`;return`<span class="badge bdanger">⚠ ${s}</span>`;}
@@ -557,7 +578,7 @@ function formHTML(tipo){
       <div class="g3">
         <div class="field"><label>Capital (€)</label><input type="number" id="f-cap" placeholder="150000"></div>
         <div class="field"><label>Intereses ord. (€)</label><input type="number" id="f-int" placeholder="12000"></div>
-        <div class="field"><label>${esInv?'Precio compra (€) *':'Precio estimado (€) *'}</label><input type="number" id="f-pre" placeholder="90000"></div>
+        <div class="field"><label>${esInv?'Precio compra (€) *':'Precio pagado (€) *'}</label><input type="number" id="f-pre" placeholder="90000"></div>
       </div>
       <div id="f-bloque-judicial" style="display:none">
         <div class="g2">
@@ -871,13 +892,21 @@ function renderNego(d,c,sc,cid){
     </div>`;
   document.getElementById(cid).innerHTML=`
     <div class="nego-range">
-      <div class="nego-box nego-min"><div class="nego-val" style="color:#7A1A1A">€${fmt(n.precioMin)}</div><div class="nego-lbl" style="color:#7A1A1A">Mínimo</div><div class="nego-sub" style="color:#7A1A1A">Quita ${n.qMin}% · +${n.margenMinPct}% sobre inversión<br>No ceder por debajo</div></div>
-      <div class="nego-box nego-opt"><div class="nego-val" style="color:#2A5E12">€${fmt(n.precioOpt)}</div><div class="nego-lbl" style="color:#2A5E12">Óptimo</div><div class="nego-sub" style="color:#2A5E12">Quita ${n.qOpt}% · ROI ~20%<br>Objetivo de cierre</div></div>
-      <div class="nego-box nego-max"><div class="nego-val" style="color:#7A4A0A">€${fmt(n.precioMax)}</div><div class="nego-lbl" style="color:#7A4A0A">Máximo</div><div class="nego-sub" style="color:#7A4A0A">Quita ${n.qMax}% · Límite absoluto<br>55% valor neto</div></div>
+      <div class="nego-box nego-min"><div class="nego-val" style="color:#7A1A1A">€${fmt(n.precioMin)}</div><div class="nego-lbl" style="color:#7A1A1A">Mínimo</div><div class="nego-sub" style="color:#7A1A1A">ROI +${n.roiMin}% · Quita ${n.qMin}%<br>No ceder por debajo</div></div>
+      <div class="nego-box nego-opt"><div class="nego-val" style="color:#2A5E12">€${fmt(n.precioOpt)}</div><div class="nego-lbl" style="color:#2A5E12">Óptimo</div><div class="nego-sub" style="color:#2A5E12">ROI +${n.roiOpt}% · Quita ${n.qOpt}%<br>Objetivo de cierre</div></div>
+      <div class="nego-box nego-max"><div class="nego-val" style="color:#7A4A0A">€${fmt(n.precioMax)}</div><div class="nego-lbl" style="color:#7A4A0A">Máximo</div><div class="nego-sub" style="color:#7A4A0A">ROI +${n.roiMax}% · Quita ${n.qMax}%<br>Límite absoluto</div></div>
     </div>
-    <div style="background:#E4F0FC;border:0.5px solid #9DCAF0;border-radius:9px;padding:11px 13px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
-      <div><div style="font-size:10px;font-weight:700;color:#0F3D6E;text-transform:uppercase;letter-spacing:.06em">Primera oferta</div><div style="font-size:11px;color:#185FA5;margin-top:1px">Inversión total: €${fmt(n.totalInv)} · Margen mínimo: +${n.margenMinPct}%</div></div>
-      <div style="font-size:21px;font-weight:700;color:#185FA5">€${fmt(n.primeraOferta)}</div>
+    <div style="background:#E4F0FC;border:0.5px solid #9DCAF0;border-radius:9px;padding:11px 13px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div><div style="font-size:10px;font-weight:700;color:#0F3D6E;text-transform:uppercase;letter-spacing:.06em">Primera oferta sugerida</div><div style="font-size:11px;color:#185FA5;margin-top:1px">Óptimo +10% de colchón negociador</div></div>
+        <div style="font-size:21px;font-weight:700;color:#185FA5">€${fmt(n.primeraOferta)}</div>
+      </div>
+      <div style="display:flex;gap:10px;font-size:11px;color:#0F3D6E;border-top:0.5px solid #9DCAF0;padding-top:7px;flex-wrap:wrap">
+        <span>💰 Precio pagado: <strong>€${fmt(n.totalInv-n.gastosTotal)}</strong></span>
+        <span>+ Gastos: <strong>€${fmt(n.gastosTotal)}</strong></span>
+        <span>= Coste total: <strong>€${fmt(n.totalInv)}</strong></span>
+        <span style="margin-left:auto">Margen mínimo: <strong>+${n.margenMinPct}%</strong></span>
+      </div>
     </div>
     <div class="estrategia-box ${n.estClass}"><div style="font-size:12px;font-weight:700;margin-bottom:3px">${n.est}</div><div style="font-size:12px;line-height:1.6">${n.estTxt}</div></div>
     ${obs?`<div style="background:#F7F9FC;border:0.5px solid #DDE3EC;border-radius:8px;padding:11px 13px;margin-top:8px"><div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Tu situación</div><div style="font-size:12px;color:#0A1628;line-height:1.7">${analObs}</div></div>`:''}
@@ -1245,7 +1274,7 @@ function abrirFicha(id,col){
     </div>
     <table class="dtable">
       <tr><td style="color:#8A9BB0">Capital nominal</td><td class="tr tb">€${fmt(d.capital)}</td></tr>
-      <tr><td style="color:#8A9BB0">${esInv?'Precio de compra':'Precio estimado'}</td><td class="tr tb">€${fmt(d.precio)}</td></tr>
+      <tr><td style="color:#8A9BB0">${esInv?'Precio pagado':'Precio estimado'}</td><td class="tr tb">€${fmt(d.precio)}</td></tr>
       <tr><td style="color:#8A9BB0">Tasación escrituraria</td><td class="tr">€${fmt(d.tasacion)}</td></tr>
       <tr><td style="color:#8A9BB0">Valor mercado${c.mercadoEst?' <span style="color:#854F0B;font-size:10px">(est.)</span>':''}</td><td class="tr">€${fmt(c.mercadoVal)}</td></tr>
       <tr><td style="color:#8A9BB0"><span class="kpi-tooltip">VNR <span class="tip-icon">ℹ</span><div class="tip-box">Valor Neto Realizable = Valor mercado − cargas anteriores − capex reforma.</div></span></td><td class="tr">€${fmt(cn.vn)}</td></tr>
