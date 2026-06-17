@@ -77,10 +77,10 @@ export default async function handler(req, res) {
 Responde ÚNICAMENTE con un objeto JSON con exactamente estas claves (usa null si no encuentras el dato):
 {
   "capital": número (capital principal pendiente en euros, sin céntimos),
-  "intereses": número (intereses ordinarios devengados a la fecha del acta o cuadro, en euros),
-  "costas": número (responsabilidad hipotecaria por costas y gastos que consta en la escritura o nota simple, en euros; busca literales como "responsabilidad por costas", "gastos y costas", "costas procesales"; null si no aparece),
-  "fecha_acta": string (fecha de devengo de los intereses o del vencimiento anticipado, formato YYYY-MM-DD; búscala en el cuadro de amortización como "VENCIMIENTO ANTICIPADO" o en el acta de fijación de saldo),
-  "tasa_interes": número (tipo de interés ordinario anual en porcentaje, ej. 3.15; búscalo en la escritura de préstamo o en el cuadro como tipo aplicado en los últimos recibos pagados),
+  "intereses": número (suma TOTAL de la columna "Intereses" de TODOS los recibos impagados del cuadro de amortización, en euros; si el cuadro no llega a la fecha de hoy, suma todos los recibos impagados hasta el último que aparezca; si no hay cuadro, usa el importe de intereses ordinarios del acta de fijación de saldo),
+  "costas": número (responsabilidad hipotecaria por costas y gastos que consta en la escritura o nota simple registral; búscala en el texto registral con literales como "Responsabilidad por costas", "costas y gastos", "gastos procesales"; si el inmueble es vivienda habitual del deudor aplica el límite del 5% sobre el capital pendiente — devuelve SIEMPRE el importe de escritura, el frontend aplicará el límite legal; null si no aparece),
+  "fecha_acta": string (fecha del último recibo impagado del cuadro, o fecha de "VENCIMIENTO ANTICIPADO" si aparece, o fecha del acta de fijación de saldo; formato YYYY-MM-DD),
+  "tasa_interes": null,
   "tasacion": número (valor de tasación para subasta pactado en escritura para caso de ejecución, art. 682 LEC, en euros; NO confundir con el valor de mercado),
   "mercado": número (valor de mercado estimado en euros, solo si aparece expresamente; null si no consta),
   "cargas_anteriores": número (importe de cargas anteriores a la hipoteca en euros),
@@ -100,9 +100,9 @@ Responde ÚNICAMENTE con un objeto JSON con exactamente estas claves (usa null s
 
 Instrucciones específicas:
 - La referencia catastral tiene formato alfanumérico de 20 caracteres. Búscala en la escritura o nota simple.
-- Para "costas": busca en la nota simple registral o escritura la responsabilidad hipotecaria por costas. En la nota simple aparece como "Responsabilidad por costas y gastos: X euros". En la escritura como cláusula de responsabilidad hipotecaria. NO es el importe de los honorarios de abogado o procurador pagados.
-- Para "fecha_acta": en el cuadro de amortización busca la línea "VENCIMIENTO ANTICIPADO" y usa esa fecha. Si no hay cuadro, busca en el acta de fijación de saldo la fecha de devengo.
-- Para "tasa_interes": en el cuadro de amortización, calcula el tipo implícito de los últimos recibos pagados: (intereses del recibo / capital pendiente) × 12 × 100. En la escritura aparece como "tipo de interés ordinario" o "interés remuneratorio".
+- Para "intereses": si hay cuadro de amortización, SUMA la columna "Intereses" de TODOS los recibos marcados como "Recibo impagado". No estimes ni calcules tipo: suma directamente los valores de esa columna. Si el cuadro muestra un resumen final ("Intereses Ordinarios Impagados: X€"), usa ese valor directamente.
+- Para "costas": búscala en la nota simple registral en el bloque HIPOTECA, texto literal como "Responsabilidad por costas y gastos: XXXX euros". En la escritura aparece en la cláusula de responsabilidad hipotecaria como un importe fijo. Devuelve siempre el importe de escritura/registro sin aplicar el límite del 5% (eso lo calcula el sistema).
+- Para "fecha_acta": usa la fecha de la línea "VENCIMIENTO ANTICIPADO" del cuadro si existe; si no, la fecha del último recibo impagado; si no hay cuadro, la fecha del acta de fijación de saldo.
 - El capital principal es la responsabilidad hipotecaria por principal, NO el total con intereses y costas.
 - La tasación para subasta es el valor pactado en escritura para caso de ejecución (art. 682 LEC).
 - Si el documento es una nota simple, extrae las cargas anteriores a la hipoteca objeto de estudio.
