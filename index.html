@@ -604,15 +604,13 @@ function formHTML(tipo){
       </div>
       <div class="g3">
         <div class="field"><label>Capital (€)</label><input type="number" id="f-cap" placeholder="150000"></div>
-        <div class="field"><label>Intereses ord. (€) <span style="font-weight:400;color:#8A9BB0;text-transform:none;font-size:9px">a fecha acta</span></label><input type="number" id="f-int" placeholder="17699" oninput="calcInteresesHoy()"></div>
+        <div class="field"><label>Intereses ord. (€) <span style="font-weight:400;color:#8A9BB0;text-transform:none;font-size:9px">suma recibos impagados</span></label><input type="number" id="f-int" placeholder="17699"></div>
         <div class="field"><label>${esInv?'Precio pagado (€) *':'Precio pagado (€) *'}</label><input type="number" id="f-pre" placeholder="90000"></div>
       </div>
-      <div class="g3">
-        <div class="field"><label>Costas escritura (€) <span style="font-weight:400;color:#8A9BB0;text-transform:none;font-size:9px">responsabilidad hipotecaria · si vivienda habitual se aplica límite 5% capital (art. 575 LEC)</span></label><input type="number" id="f-costas" placeholder="26814" oninput="calcInteresesHoy()"></div>
-        <div class="field"><label>Fecha acta / venc. anticipado</label><input type="date" id="f-fecha-acta" oninput="calcInteresesHoy()"></div>
-        <div class="field"><label>Tipo interés ordinario (%) <span style="font-weight:400;color:#8A9BB0;text-transform:none;font-size:9px">anual</span></label><input type="number" id="f-tasa" placeholder="3.15" step="0.01" oninput="calcInteresesHoy()"></div>
+      <div class="g2">
+        <div class="field"><label>Costas escritura (€) <span style="font-weight:400;color:#8A9BB0;text-transform:none;font-size:9px">de nota simple · si vivienda habitual se aplica límite 5% (art. 575 LEC)</span></label><input type="number" id="f-costas" placeholder="26814"></div>
+        <div class="field"><label>Fecha vencimiento anticipado</label><input type="date" id="f-fecha-acta"></div>
       </div>
-      <div id="f-int-hoy-preview" style="display:none;background:#EDF5FF;border:0.5px solid #9DCAF0;border-radius:8px;padding:9px 12px;margin-bottom:8px;font-size:12px;color:#0F3D6E;line-height:1.6"></div>
       <div id="f-bloque-judicial" style="display:none">
         <div class="g2">
           <div class="field"><label>Fase procesal</label><select id="f-fase" onchange="actualizarJuzgadoSugerido()"><option value="prejudicial">Prejudicial (MASC/OVC)</option><option value="monitorio">Monitorio</option><option value="ejecucion_admitida">Ejecución admitida</option><option value="tasacion_hecha">Tasación judicial</option><option value="subasta_senalada">Subasta señalada</option></select></div>
@@ -726,7 +724,7 @@ async function extraerDatos(){
       throw new Error(msg);
     }
     const data=await r.json();
-    const mapa={capital:'f-cap',intereses:'f-int',tasacion:'f-tas',mercado:'f-mer',metros:'f-metros',habitaciones:'f-hab',planta:'f-planta',banos:'f-banos',costas:'f-costas',tasa_interes:'f-tasa'};
+    const mapa={capital:'f-cap',intereses:'f-int',tasacion:'f-tas',mercado:'f-mer',metros:'f-metros',habitaciones:'f-hab',planta:'f-planta',banos:'f-banos',costas:'f-costas'};
     Object.entries(mapa).forEach(([k,id])=>{if(data[k])setVal(id,data[k]);});
     if(data.cargas_anteriores)setVal('f-car',data.cargas_anteriores);
     if(data.fecha_acta){setVal('f-fecha-acta',data.fecha_acta);setTimeout(()=>calcInteresesHoy(),200);}
@@ -871,9 +869,7 @@ function guardarOp(tipo){
   const refAnterior=datosOriginales.ref;
   const vivHabVal=vv('f-vivhab');
   const viviendaHabitualDeudor=vivHabVal==='si'?true:vivHabVal==='no'?false:null;
-  const intHoyEl=document.getElementById('f-int-hoy');
-  const interesesHoy=intHoyEl&&intHoyEl.value?parseFloat(intHoyEl.value):nn('f-int');
-  const d={...datosOriginales,id:esEdicion?editandoId:Date.now().toString(),ref,tipo:vv('f-tipo'),capital,intereses:nn('f-int'),interesesHoy,costas:nn('f-costas'),fechaActa:vv('f-fecha-acta'),tasaInteres:parseFloat(vv('f-tasa'))||0,fecha_pago:vv('f-fecha'),fase:esJudicial?vv('f-fase'):null,estrategia:vv('f-est'),clausulas:esJudicial?vv('f-cla'):null,vulnerabilidad:esJudicial?vv('f-vul'):null,epi:esJudicial?vv('f-epi'):null,juzgado:esJudicial?vv('f-juzgado'):null,precio,tasacion:nn('f-tas'),mercado:nn('f-mer'),cargas:nn('f-car'),capex:nn('f-cap2'),meses:nn('f-mes')||12,liquidez:vv('f-liq'),ocupacion:vv('f-ocu'),viviendaHabitualDeudor,obs:vv('f-obs'),direccion:vv('f-dir'),refCatastral:vv('f-refcat'),tipo_inmueble:vv('f-tipoInm'),metros:nn('f-metros'),habitaciones:nn('f-hab'),banos:nn('f-banos'),planta:vv('f-planta'),fecha:esEdicion?datosOriginales.fecha:new Date().toISOString(),docs:curDocs.length?curDocs.map(x=>x.nombre):(datosOriginales.docs||[]),tipoOp:tipo,finalizada:esEdicion?datosOriginales.finalizada:false};
+  const d={...datosOriginales,id:esEdicion?editandoId:Date.now().toString(),ref,tipo:vv('f-tipo'),capital,intereses:nn('f-int'),interesesHoy:nn('f-int'),costas:nn('f-costas'),fechaActa:vv('f-fecha-acta'),tasaInteres:0,fecha_pago:vv('f-fecha'),fase:esJudicial?vv('f-fase'):null,estrategia:vv('f-est'),clausulas:esJudicial?vv('f-cla'):null,vulnerabilidad:esJudicial?vv('f-vul'):null,epi:esJudicial?vv('f-epi'):null,juzgado:esJudicial?vv('f-juzgado'):null,precio,tasacion:nn('f-tas'),mercado:nn('f-mer'),cargas:nn('f-car'),capex:nn('f-cap2'),meses:nn('f-mes')||12,liquidez:vv('f-liq'),ocupacion:vv('f-ocu'),viviendaHabitualDeudor,obs:vv('f-obs'),direccion:vv('f-dir'),refCatastral:vv('f-refcat'),tipo_inmueble:vv('f-tipoInm'),metros:nn('f-metros'),habitaciones:nn('f-hab'),banos:nn('f-banos'),planta:vv('f-planta'),fecha:esEdicion?datosOriginales.fecha:new Date().toISOString(),docs:curDocs.length?curDocs.map(x=>x.nombre):(datosOriginales.docs||[]),tipoOp:tipo,finalizada:esEdicion?datosOriginales.finalizada:false};
   const c=calc(d);const sc=score(d,c);d.score=sc;
   document.getElementById('f-placeholder').style.display='none';
   document.getElementById('f-resultado').style.display='block';
@@ -1546,7 +1542,7 @@ function editarOperacion(id,col){
   setVal('f-dir',d.direccion);setVal('f-refcat',d.refCatastral);
   if(d.tipo_inmueble)document.getElementById('f-tipoInm').value=d.tipo_inmueble;
   setVal('f-metros',d.metros);setVal('f-planta',d.planta);setVal('f-hab',d.habitaciones);setVal('f-banos',d.banos);
-  setVal('f-tas',d.tasacion);setVal('f-mer',d.mercado);setVal('f-car',d.cargas);setVal('f-cap2',d.capex);setVal('f-mes',d.meses);setVal('f-costas',d.costas);setVal('f-fecha-acta',d.fechaActa);setVal('f-tasa',d.tasaInteres);setTimeout(()=>calcInteresesHoy(),100);
+  setVal('f-tas',d.tasacion);setVal('f-mer',d.mercado);setVal('f-car',d.cargas);setVal('f-cap2',d.capex);setVal('f-mes',d.meses);setVal('f-costas',d.costas);setVal('f-fecha-acta',d.fechaActa);
   if(d.liquidez)document.getElementById('f-liq').value=d.liquidez;
   if(d.ocupacion)document.getElementById('f-ocu').value=d.ocupacion;
   if(d.viviendaHabitualDeudor===true)document.getElementById('f-vivhab').value='si';
