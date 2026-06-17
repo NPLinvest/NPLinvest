@@ -148,6 +148,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .fiscal-row.impuesto{background:#FEF3E2}
 .fiscal-row.beneficio{background:#EBF7E2;font-weight:700;font-size:15px}
 .gasto-form{background:#F7F9FC;border:0.5px solid #DDE3EC;border-radius:10px;padding:13px;margin-top:10px}
+.kpi-tooltip{position:relative;display:inline-flex;align-items:center;gap:3px}
+.kpi-tooltip .tip-icon{font-size:10px;color:#9DCAF0;cursor:pointer;line-height:1}
+.kpi-tooltip .tip-box{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#0A1628;color:#CBD8E8;font-size:11px;line-height:1.5;padding:8px 10px;border-radius:7px;width:220px;z-index:999;border:0.5px solid #1A3A5C;font-weight:400;text-transform:none;letter-spacing:0}
+.kpi-tooltip .tip-box::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#0A1628}
+.kpi-tooltip:hover .tip-box,.kpi-tooltip .tip-icon:focus + .tip-box{display:block}
+.factura-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;background:#E4F0FC;border:0.5px solid #9DCAF0;border-radius:5px;font-size:11px;cursor:pointer;color:#0F3D6E;font-weight:500;margin-top:5px}
+.factura-chip:hover{background:#D0E8F8}
 @media(max-width:640px){.g2,.g3,.portales-grid,.nego-range,.riesgo-grid,.op-card-metrics{grid-template-columns:1fr 1fr}.modal{border-radius:12px}}
 </style>
 </head>
@@ -415,13 +422,21 @@ function calcFiscal(d,gastos,cantidadObtenida){
 }
 
 // ── CÁLCULO OPERATIVO ─────────────────────────────────────────────────────────
+// mercadoEfectivo: usa valor de mercado manual si existe; si no, estima desde tasación
+// (tasación para subasta ≈ 74% del mercado real → mercado ≈ tasación × 1.35)
+function mercadoEfectivo(d){
+  if(d.mercado&&d.mercado>0)return{valor:d.mercado,estimado:false};
+  if(d.tasacion&&d.tasacion>0)return{valor:Math.round(d.tasacion*1.35),estimado:true};
+  return{valor:0,estimado:true};
+}
 function calc(d){
-  const cap=d.capital||0,mer=d.mercado||0,car=d.cargas||0,cp=d.capex||0,mes=d.meses||12,pre=d.precio||0,tas=d.tasacion||0;
+  const cap=d.capital||0,car=d.cargas||0,cp=d.capex||0,mes=d.meses||12,pre=d.precio||0,tas=d.tasacion||0;
+  const me=mercadoEfectivo(d);const mer=me.valor;
   const vn=mer-car-cp,gb=vn-pre,roi=pre>0?(gb/pre*100):0;
   const tir=mes>0?(Math.pow(1+roi/100,12/mes)-1)*100:0;
   const gs=vn*0.7-pre,rs=pre>0?(gs/pre*100):0;
   const ltv=mer>0?(cap/mer*100):0,pm=vn*0.55;
-  return{vn,gb,roi,tir,gs,rs,ltv,pm,adj:tas*0.5};
+  return{vn,gb,roi,tir,gs,rs,ltv,pm,adj:tas*0.5,mercadoEst:me.estimado,mercadoVal:mer};
 }
 function calcNeto(d,go){
   const c=calc(d);const tg=go.reduce((a,g)=>a+(g.importe||0),0);
@@ -578,7 +593,15 @@ function formHTML(tipo){
       </div>
       <div class="g2">
         <div class="field"><label>Tasación escrituraria (€)</label><input type="number" id="f-tas" placeholder="200000"></div>
-        <div class="field"><label>Valor mercado (€)</label><input type="number" id="f-mer" placeholder="180000"></div>
+        <div class="field"><label>Valor mercado (€) <span style="font-weight:400;color:#8A9BB0;text-transform:none;font-size:9px">— deja en blanco si no sabes</span></label><input type="number" id="f-mer" placeholder="180000"></div>
+      </div>
+      <div style="background:#EDF5FF;border:0.5px solid #9DCAF0;border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:600;color:#0F3D6E;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">🏘 Estimar valor de mercado por €/m² de zona</div>
+        <div class="g2" style="gap:8px;align-items:flex-end">
+          <div class="field" style="margin-bottom:0"><label>€/m² zona <span style="font-weight:400;color:#185FA5;text-transform:none;font-size:9px">(de Idealista, Fotocasa...)</span></label><input type="number" id="f-pm2zona" placeholder="ej. 1800"></div>
+          <button class="btn btn-blue btn-sm" onclick="calcularMercadoDesdeM2()" style="margin-bottom:2px">Calcular →</button>
+        </div>
+        <div style="font-size:10px;color:#4A7A9B;margin-top:6px;line-height:1.5">Busca el €/m² medio del barrio en <a href="https://www.idealista.com/estadisticas-inmobiliarias/" target="_blank" style="color:#185FA5">Idealista Estadísticas</a> e introdúcelo aquí. Requiere tener los m² informados arriba.</div>
       </div>
       <div class="g3">
         <div class="field"><label>Cargas anteriores (€)</label><input type="number" id="f-car" placeholder="0"></div>
@@ -670,6 +693,18 @@ async function extraerDatos(){
     document.getElementById('f-ext-status').textContent=e.message||'⚠ Error al extraer. Introduce los datos manualmente.';
   }
   document.getElementById('f-btn-ext').disabled=false;
+}
+
+function calcularMercadoDesdeM2(){
+  const pm2=parseFloat(document.getElementById('f-pm2zona')?.value)||0;
+  const metros=parseFloat(document.getElementById('f-metros')?.value)||0;
+  if(!pm2){alert('Introduce el €/m² de zona');return;}
+  if(!metros){alert('Introduce los m² del inmueble');return;}
+  const mer=Math.round(pm2*metros);
+  setVal('f-mer',mer);
+  document.getElementById('f-pm2zona').style.borderColor='#2A6E14';
+  const el=document.getElementById('f-mer');
+  if(el){el.style.borderColor='#2A6E14';el.style.background='#F0FAE8';}
 }
 
 function prevRefCat(){
@@ -771,12 +806,17 @@ function guardarOp(tipo){
     <div class="rhead" style="background:${vbg}"><div><div style="font-size:15px;font-weight:700;color:${vc}">${verd} · ${sc}/100</div>${d.refCatastral?`<div style="margin-top:5px">${catLink(d.refCatastral)}</div>`:''}</div><div style="text-align:right"><div style="font-size:10px;color:${vc};opacity:.7;text-transform:uppercase">TIR</div><div style="font-size:21px;font-weight:700;color:${vc}">${pct(c.tir)}</div></div></div>
     <div class="strk"><div class="sfil" style="width:${sc}%;background:${vc}"></div></div>
     <div class="g3" style="gap:7px;margin-top:10px">
-      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(c.roi)}">${pct(c.roi)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">ROI bruto</div></div>
-      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(c.rs)}">${pct(c.rs)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">ROI estrés</div></div>
-      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700">${pct(c.ltv)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">LTV</div></div>
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(c.roi)}">${pct(c.roi)}</div><div class="kpi-tooltip" style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase;justify-content:center">ROI BRUTO <span class="tip-icon">ℹ</span><div class="tip-box">ROI Bruto = (VNR − precio compra) / precio compra × 100. Negativo cuando el precio pagado supera el valor neto del activo.</div></div></div>
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(c.rs)}">${pct(c.rs)}</div><div class="kpi-tooltip" style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase;justify-content:center">ROI ESTRÉS <span class="tip-icon">ℹ</span><div class="tip-box">ROI Estrés = (VNR×0.7 − precio) / precio × 100. Simula venta forzada al 70% del mercado.</div></div></div>
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700">${pct(c.ltv)}</div><div class="kpi-tooltip" style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase;justify-content:center">LTV <span class="tip-icon">ℹ</span><div class="tip-box">LTV = Capital deuda / Valor mercado × 100. Mide el colchón entre la deuda y el activo. Encima del 90% el riesgo es alto.</div></div></div>
     </div>
-    <div style="margin-top:7px;padding:9px 13px;background:#F7F9FC;border-radius:7px;display:flex;justify-content:space-between"><div style="font-size:10px;color:#8A9BB0;text-transform:uppercase">Valor neto realizable</div><div style="font-size:14px;font-weight:700">€${fmt(c.vn)}</div></div>
-    ${d.metros?`<div style="margin-top:5px;padding:9px 13px;background:#F7F9FC;border-radius:7px;display:flex;justify-content:space-between"><div style="font-size:10px;color:#8A9BB0;text-transform:uppercase">€/m²</div><div style="font-size:14px;font-weight:700">€${fmt(d.mercado/d.metros)}/m²</div></div>`:''}
+    ${c.mercadoEst?`<div style="margin-top:7px;padding:7px 12px;background:#FEF3E2;border:0.5px solid #F5C878;border-radius:7px;font-size:11px;color:#7A4A0A">⚠ Valor de mercado estimado a partir de la tasación escrituraria (×1.35). Introduce el valor de mercado real para mayor precisión.</div>`:''}
+    <div style="margin-top:7px;padding:9px 13px;background:#F7F9FC;border-radius:7px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><div style="font-size:10px;color:#8A9BB0;text-transform:uppercase">Tasación escrituraria</div><div style="font-size:13px;font-weight:600;color:#4A5568">€${fmt(d.tasacion)}</div></div>
+      <div style="display:flex;justify-content:space-between"><div style="font-size:10px;color:#8A9BB0;text-transform:uppercase">Valor mercado${c.mercadoEst?' (est.)':''}</div><div style="font-size:13px;font-weight:600">€${fmt(c.mercadoVal)}</div></div>
+    </div>
+    <div style="margin-top:5px;padding:9px 13px;background:#F7F9FC;border-radius:7px;display:flex;justify-content:space-between"><div class="kpi-tooltip" style="font-size:10px;color:#8A9BB0;text-transform:uppercase">VNR <span class="tip-icon">ℹ</span><div class="tip-box">Valor Neto Realizable = Valor mercado − cargas anteriores − capex reforma.</div></div><div style="font-size:14px;font-weight:700">€${fmt(c.vn)}</div></div>
+    ${d.metros?`<div style="margin-top:5px;padding:9px 13px;background:#F7F9FC;border-radius:7px;display:flex;justify-content:space-between"><div style="font-size:10px;color:#8A9BB0;text-transform:uppercase">€/m²</div><div style="font-size:14px;font-weight:700">€${fmt(c.mercadoVal/d.metros)}/m²</div></div>`:''}
     ${portalesHTML(d)}`;
   renderNego(d,c,sc,'f-nego');
   const dict=generarDictamen(d,c,sc);
@@ -1199,19 +1239,20 @@ function abrirFicha(id,col){
     ${d.finalizada?`<div style="background:#EBF7E2;border:1px solid #B2D98A;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px"><div style="font-size:22px">✅</div><div><div style="font-size:13px;font-weight:700;color:#2A5E12">Operación finalizada</div><div style="font-size:11px;color:#3A7A20">Cantidad obtenida: €${fmt(d.cantidadObtenida)} · ${d.fechaCierre?new Date(d.fechaCierre).toLocaleDateString('es-ES'):''}</div></div></div>`:''}
     <div class="rhead" style="background:${vbg};margin-bottom:10px"><div><div style="font-size:15px;font-weight:700;color:${vc}">${verd} · ${sc}/100</div><div style="font-size:11px;color:${vc};margin-top:2px">${d.estrategia} · ${d.tipo}${d.refCatastral?` · `+catLink(d.refCatastral):''}</div></div><div style="text-align:right"><div style="font-size:10px;color:${vc};opacity:.7;text-transform:uppercase">TIR ${esInv?'neta':'est.'}</div><div style="font-size:21px;font-weight:700;color:${vc}">${pct(esInv?cn.tirNeto:c.tir)}</div></div></div>
     <div class="g3" style="gap:7px;margin-bottom:10px">
-      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(esInv?cn.roiNeto:c.roi)}">${pct(esInv?cn.roiNeto:c.roi)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">${esInv?'ROI neto':'ROI bruto'}</div></div>
-      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(c.rs)}">${pct(c.rs)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">ROI estrés</div></div>
-      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700">${pct(c.ltv)}</div><div style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase">LTV</div></div>
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(esInv?cn.roiNeto:c.roi)}">${pct(esInv?cn.roiNeto:c.roi)}</div><div class="kpi-tooltip" style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase;justify-content:center">${esInv?'ROI neto':'ROI bruto'} <span class="tip-icon">ℹ</span><div class="tip-box">${esInv?'ROI Neto = (VNR − precio − todos los gastos) / precio × 100.':'ROI Bruto = (VNR − precio compra) / precio × 100. Negativo cuando el precio supera el valor neto del activo.'}</div></div></div>
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700;color:${rc(c.rs)}">${pct(c.rs)}</div><div class="kpi-tooltip" style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase;justify-content:center">ROI estrés <span class="tip-icon">ℹ</span><div class="tip-box">ROI Estrés = (VNR×0.7 − precio) / precio × 100. Escenario de venta forzada al 70% del valor de mercado.</div></div></div>
+      <div style="background:#F7F9FC;border-radius:7px;padding:9px;text-align:center"><div style="font-size:15px;font-weight:700">${pct(c.ltv)}</div><div class="kpi-tooltip" style="font-size:9px;color:#8A9BB0;margin-top:2px;text-transform:uppercase;justify-content:center">LTV <span class="tip-icon">ℹ</span><div class="tip-box">LTV = Capital deuda / Valor mercado × 100. Por encima del 90% el colchón es insuficiente.</div></div></div>
     </div>
     <table class="dtable">
       <tr><td style="color:#8A9BB0">Capital nominal</td><td class="tr tb">€${fmt(d.capital)}</td></tr>
       <tr><td style="color:#8A9BB0">${esInv?'Precio de compra':'Precio estimado'}</td><td class="tr tb">€${fmt(d.precio)}</td></tr>
       <tr><td style="color:#8A9BB0">Tasación escrituraria</td><td class="tr">€${fmt(d.tasacion)}</td></tr>
-      <tr><td style="color:#8A9BB0">Valor mercado</td><td class="tr">€${fmt(d.mercado)}</td></tr>
-      <tr><td style="color:#8A9BB0">Valor neto realizable</td><td class="tr">€${fmt(cn.vn)}</td></tr>
+      <tr><td style="color:#8A9BB0">Valor mercado${c.mercadoEst?' <span style="color:#854F0B;font-size:10px">(est.)</span>':''}</td><td class="tr">€${fmt(c.mercadoVal)}</td></tr>
+      <tr><td style="color:#8A9BB0"><span class="kpi-tooltip">VNR <span class="tip-icon">ℹ</span><div class="tip-box">Valor Neto Realizable = Valor mercado − cargas anteriores − capex reforma.</div></span></td><td class="tr">€${fmt(cn.vn)}</td></tr>
       ${esInv?`<tr><td style="color:#8A9BB0">Gastos registrados</td><td class="tr" style="color:#7A4A0A">€${fmt(cn.totalGastos)}</td></tr><tr><td style="color:#8A9BB0">Coste total (precio+gastos)</td><td class="tr tb">€${fmt((d.precio||0)+cn.totalGastos)}</td></tr>`:''}
-      ${d.metros?`<tr><td style="color:#8A9BB0">€/m²</td><td class="tr">€${fmt(d.mercado/d.metros)}/m²</td></tr>`:''}
+      ${d.metros?`<tr><td style="color:#8A9BB0">€/m²</td><td class="tr">€${fmt(c.mercadoVal/d.metros)}/m²</td></tr>`:''}
     </table>
+    ${c.mercadoEst?`<div style="margin-top:8px;padding:8px 11px;background:#FEF3E2;border:0.5px solid #F5C878;border-radius:7px;font-size:11px;color:#7A4A0A;line-height:1.5">⚠ Mercado estimado a partir de la tasación escrituraria (×1.35). Introduce el valor de mercado real para mayor precisión.</div>`:''}
     ${d.obs?`<div style="margin-top:10px;padding:9px 12px;background:#F7F9FC;border-radius:7px;font-size:12px;color:#4A5568;line-height:1.6"><strong>Obs:</strong> ${d.obs}</div>`:''}`;
 
   // FISCAL
@@ -1246,7 +1287,7 @@ function abrirFicha(id,col){
   if(esInv){
     const CAT={notaria:'Notaría',registro:'Registro',gestoria:'Gestoría',abogado:'Abogado',procurador:'Procurador',tasacion:'Tasación',itp:'ITP/AJD',plusvalia:'Plusvalía',ibi:'IBI',nota_simple:'Nota simple',due_diligence:'Due diligence',subasta:'Subasta',reforma:'Reforma',agencia:'Agencia',financiacion:'Financiación',seguro:'Seguros',otro:'Otro'};
     document.getElementById('ft-gastos').innerHTML=`
-      ${gastos.length?`<table class="dtable"><thead><tr><th>Concepto</th><th>Categoría</th><th class="tr">Importe</th><th></th></tr></thead><tbody>${gastos.map(g=>`<tr><td>${g.nombre}</td><td>${CAT[g.categoria]||g.categoria}</td><td class="tr">€${fmt(g.importe)}</td><td style="width:36px;text-align:center"><button class="gasto-del" onclick="eliminarGasto('${g.id}','${id}','${col}')" title="Eliminar gasto">🗑</button></td></tr>`).join('')}</tbody></table><div style="display:flex;justify-content:space-between;padding:9px 0 2px;border-top:0.5px solid #DDE3EC;margin-top:5px"><span class="gtotal">Σ gastos: €${fmt(cn.totalGastos)}</span><span class="gtotal" style="background:#EBF7E2;color:#2A5E12;border-color:#B2D98A">Coste total: €${fmt((d.precio||0)+cn.totalGastos)}</span></div>`:'<div class="empty" style="padding:14px 0">Sin gastos</div>'}
+      ${gastos.length?`<table class="dtable"><thead><tr><th>Concepto</th><th>Categoría</th><th class="tr">Importe</th><th>Factura</th><th></th></tr></thead><tbody>${gastos.map(g=>`<tr><td>${g.nombre}</td><td>${CAT[g.categoria]||g.categoria}</td><td class="tr">€${fmt(g.importe)}</td><td>${g.factura_b64?`<span class="factura-chip" onclick="verFactura('${g.id}')">📄 Ver</span>`:'<span style="font-size:11px;color:#C8D0DC">—</span>'}</td><td style="width:36px;text-align:center"><button class="gasto-del" onclick="eliminarGasto('${g.id}','${id}','${col}')" title="Eliminar gasto">🗑</button></td></tr>`).join('')}</tbody></table><div style="display:flex;justify-content:space-between;padding:9px 0 2px;border-top:0.5px solid #DDE3EC;margin-top:5px"><span class="gtotal">Σ gastos: €${fmt(cn.totalGastos)}</span><span class="gtotal" style="background:#EBF7E2;color:#2A5E12;border-color:#B2D98A">Coste total: €${fmt((d.precio||0)+cn.totalGastos)}</span></div>`:'<div class="empty" style="padding:14px 0">Sin gastos</div>'}
       <div class="gasto-form">
         <div style="font-size:11px;font-weight:600;color:#6B7E96;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px">➕ Añadir gasto</div>
         <div class="g2">
@@ -1256,6 +1297,14 @@ function abrirFicha(id,col){
         <div class="g2">
           <div class="field"><label>Importe (€)</label><input type="number" id="fg-importe" placeholder="1500"></div>
           <div class="field"><label>Fecha</label><input type="date" id="fg-fecha" value="${new Date().toISOString().split('T')[0]}"></div>
+        </div>
+        <div class="field">
+          <label>Factura adjunta <span style="font-weight:400;text-transform:none;font-size:9px;color:#8A9BB0">(PDF o imagen, máx. 5MB)</span></label>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-out btn-sm" onclick="document.getElementById('fg-factura-file').click()">📎 Adjuntar factura</button>
+            <input type="file" id="fg-factura-file" accept=".pdf,image/*" style="display:none" onchange="procesarFactura(this)">
+            <span id="fg-factura-nombre" style="font-size:11px;color:#5A9A3A"></span>
+          </div>
         </div>
         <button class="btn btn-dark btn-sm" style="width:100%" onclick="addGastoFicha('${d.ref}','${id}','${col}')">➕ Añadir</button>
       </div>`;
@@ -1324,11 +1373,31 @@ function autonNomGasto(){
   const el=document.getElementById('fg-nombre');
   if(el&&n[cat])el.value=n[cat];
 }
+
+let _facturaTemp=null; // almacén temporal de factura hasta guardar el gasto
+function procesarFactura(input){
+  const f=input.files[0];if(!f)return;
+  if(f.size>5*1024*1024){alert('Máximo 5 MB por factura');input.value='';return;}
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    _facturaTemp={b64:ev.target.result.split(',')[1],mime:f.type||'application/pdf',nombre:f.name};
+    const lbl=document.getElementById('fg-factura-nombre');
+    if(lbl)lbl.textContent=`✓ ${f.name}`;
+  };
+  rd.readAsDataURL(f);
+}
+function verFactura(gastoId){
+  const g=loadGastos().find(x=>x.id===gastoId);
+  if(!g||!g.factura_b64)return;
+  const w=window.open();
+  w.document.write(`<iframe src="data:${g.factura_mime};base64,${g.factura_b64}" style="width:100%;height:100%;border:none"></iframe>`);
+}
 function addGastoFicha(opRef,id,col){
   const nombre=document.getElementById('fg-nombre')?.value;
   const importe=parseFloat(document.getElementById('fg-importe')?.value)||0;
   if(!nombre||!importe){alert('Rellena concepto e importe');return;}
   const g={id:Date.now().toString(),opRef,categoria:document.getElementById('fg-cat')?.value||'otro',nombre,importe,fecha:document.getElementById('fg-fecha')?.value||new Date().toISOString().split('T')[0]};
+  if(_facturaTemp){g.factura_b64=_facturaTemp.b64;g.factura_mime=_facturaTemp.mime;g.factura_nombre=_facturaTemp.nombre;_facturaTemp=null;}
   const gastos=loadGastos();gastos.push(g);saveGastos(gastos);
   abrirFicha(id,col);rDash();
 }
