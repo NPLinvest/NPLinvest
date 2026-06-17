@@ -82,7 +82,7 @@ JERARQUÍA DE DOCUMENTOS — sigue este orden de prioridad estrictamente:
 
 Responde ÚNICAMENTE con un objeto JSON con exactamente estas claves (usa null si no encuentras el dato):
 {
-  "capital": número (capital principal PENDIENTE e IMPAGADO en euros, sin céntimos; es el saldo vivo a fecha de vencimiento anticipado, NO el importe original del préstamo; en el cuadro de amortización aparece como "Capital Impagado" en el resumen final; en el acta de fijación de saldo como "principal pendiente"),
+  "capital": número (capital PENDIENTE e IMPAGADO en euros, sin céntimos — NO el importe original del préstamo; ver instrucciones específicas abajo para entender la diferencia),
   "intereses": número (suma TOTAL de la columna "Intereses" — también llamada "Intereses ordinarios" — de TODOS los recibos marcados como "Recibo impagado" del cuadro de amortización, en euros; NO sumes la columna "Demoras" ni "Gestión impago"; si el cuadro muestra un resumen final con la línea "Intereses Ordinarios Impagados: X€" usa ESE valor directamente sin sumar nada más),
   "costas": número (responsabilidad hipotecaria por costas y gastos que consta en la escritura o nota simple registral; búscala en el texto registral con literales como "Responsabilidad por costas", "costas y gastos", "gastos procesales"; si el inmueble es vivienda habitual del deudor aplica el límite del 5% sobre el capital pendiente — devuelve SIEMPRE el importe de escritura, el frontend aplicará el límite legal; null si no aparece),
   "fecha_acta": string (fecha del último recibo impagado del cuadro, o fecha de "VENCIMIENTO ANTICIPADO" si aparece, o fecha del acta de fijación de saldo; formato YYYY-MM-DD),
@@ -109,7 +109,13 @@ Instrucciones específicas:
 - Para "intereses": prioridad 1 — si el cuadro de amortización tiene un resumen final con la línea "Intereses Ordinarios Impagados: X€" o "Total deuda: X€" con desglose, usa directamente ese importe de intereses ordinarios. Prioridad 2 — si no hay resumen, suma SOLO la columna "Intereses" (no "Demoras", no "Gestión impago") de los recibos marcados como "Recibo impagado". Nunca mezcles intereses ordinarios con intereses de demora.
 - Para "costas": búscala en la nota simple registral en el bloque HIPOTECA, texto literal como "Responsabilidad por costas y gastos: XXXX euros". En la escritura aparece en la cláusula de responsabilidad hipotecaria como un importe fijo. Devuelve siempre el importe de escritura/registro sin aplicar ningún límite (el sistema aplica: 5% del capital si vivienda habitual art. 575.1 bis LEC, 30% del capital si no es vivienda habitual art. 575.1 LEC).
 - Para "fecha_acta": usa la fecha de la línea "VENCIMIENTO ANTICIPADO" del cuadro si existe; si no, la fecha del último recibo impagado; si no hay cuadro, la fecha del acta de fijación de saldo.
-- El capital principal es el saldo PENDIENTE e IMPAGADO a fecha de vencimiento anticipado. En el cuadro de amortización figura como "Capital Impagado: X€" en el resumen final de la última página. NO uses el importe original del préstamo que figura en la escritura de constitución ni en la cesión.
+- DISTINCIÓN CRÍTICA para el campo "capital": existen DOS importes distintos que NO debes confundir:
+  (a) CAPITAL ORIGINAL DEL PRÉSTAMO: el importe por el que se constituyó la hipoteca (ej. 178.760,53€). Aparece en la escritura de constitución o de cesión con frases como "formalizada por un importe de X euros". Este valor NO es el capital que debes extraer.
+  (b) CAPITAL PENDIENTE IMPAGADO: el saldo vivo que queda por pagar a fecha de vencimiento anticipado. Este es el valor correcto para el campo "capital". Búscalo en este orden de prioridad:
+     1. En el cuadro de amortización: línea "Capital Impagado: X€" en el resumen final.
+     2. En el acta de fijación de saldo o certificado de deuda: "principal pendiente" o "capital reclamado".
+     3. En la escritura de cesión: frase como "la deuda garantizada asciende a X€ por todos los conceptos" — en este caso el importe incluye intereses, así que ponlo en "capital" solo si no tienes desglose y déjalo indicado en observaciones.
+  Si tienes el cuadro de amortización, el capital pendiente es SIEMPRE menor que el capital original.
 - La tasación para subasta es el valor pactado en escritura para caso de ejecución (art. 682 LEC).
 - Si el documento es una nota simple, extrae las cargas anteriores a la hipoteca objeto de estudio.
 - Si hay cláusulas suelo, intereses de demora elevados o vencimiento anticipado agresivo, indícalo en observaciones y pon clausulas: "pendiente".
