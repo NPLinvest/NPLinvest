@@ -74,6 +74,12 @@ export default async function handler(req, res) {
 
     const PROMPT_EXTRACCION = `Eres un abogado experto en inversión NPL en España. Analiza estos documentos de una operación hipotecaria y extrae los datos para rellenar una ficha de inversión.
 
+JERARQUÍA DE DOCUMENTOS — sigue este orden de prioridad estrictamente:
+1. CUADRO DE AMORTIZACIÓN: es la fuente principal para "capital" e "intereses". Su resumen final ("Capital Impagado", "Intereses Ordinarios Impagados", "Total deuda") prevalece sobre cualquier otro documento.
+2. ACTA DE FIJACIÓN DE SALDO: segunda fuente para capital e intereses si no hay cuadro.
+3. NOTA SIMPLE REGISTRAL: fuente principal para "tasacion", "costas", "refCatastral", cargas y descripción del inmueble.
+4. ESCRITURA DE CONSTITUCIÓN O CESIÓN: fuente para datos del inmueble, tipo de crédito y cláusulas. El importe original del préstamo que figura en la escritura NO es el capital pendiente — ignóralo para el campo "capital".
+
 Responde ÚNICAMENTE con un objeto JSON con exactamente estas claves (usa null si no encuentras el dato):
 {
   "capital": número (capital principal PENDIENTE e IMPAGADO en euros, sin céntimos; es el saldo vivo a fecha de vencimiento anticipado, NO el importe original del préstamo; en el cuadro de amortización aparece como "Capital Impagado" en el resumen final; en el acta de fijación de saldo como "principal pendiente"),
@@ -101,7 +107,7 @@ Responde ÚNICAMENTE con un objeto JSON con exactamente estas claves (usa null s
 Instrucciones específicas:
 - La referencia catastral tiene formato alfanumérico de 20 caracteres. Búscala en la escritura o nota simple.
 - Para "intereses": prioridad 1 — si el cuadro de amortización tiene un resumen final con la línea "Intereses Ordinarios Impagados: X€" o "Total deuda: X€" con desglose, usa directamente ese importe de intereses ordinarios. Prioridad 2 — si no hay resumen, suma SOLO la columna "Intereses" (no "Demoras", no "Gestión impago") de los recibos marcados como "Recibo impagado". Nunca mezcles intereses ordinarios con intereses de demora.
-- Para "costas": búscala en la nota simple registral en el bloque HIPOTECA, texto literal como "Responsabilidad por costas y gastos: XXXX euros". En la escritura aparece en la cláusula de responsabilidad hipotecaria como un importe fijo. Devuelve siempre el importe de escritura/registro sin aplicar ningún límite (el sistema aplica: 5% del capital si vivienda habitual art. 575.1 bis LEC, 20% del capital si no es vivienda habitual art. 575.1 LEC).
+- Para "costas": búscala en la nota simple registral en el bloque HIPOTECA, texto literal como "Responsabilidad por costas y gastos: XXXX euros". En la escritura aparece en la cláusula de responsabilidad hipotecaria como un importe fijo. Devuelve siempre el importe de escritura/registro sin aplicar ningún límite (el sistema aplica: 5% del capital si vivienda habitual art. 575.1 bis LEC, 30% del capital si no es vivienda habitual art. 575.1 LEC).
 - Para "fecha_acta": usa la fecha de la línea "VENCIMIENTO ANTICIPADO" del cuadro si existe; si no, la fecha del último recibo impagado; si no hay cuadro, la fecha del acta de fijación de saldo.
 - El capital principal es el saldo PENDIENTE e IMPAGADO a fecha de vencimiento anticipado. En el cuadro de amortización figura como "Capital Impagado: X€" en el resumen final de la última página. NO uses el importe original del préstamo que figura en la escritura de constitución ni en la cesión.
 - La tasación para subasta es el valor pactado en escritura para caso de ejecución (art. 682 LEC).
