@@ -297,6 +297,8 @@ function loadResoluciones(){try{return JSON.parse(localStorage.getItem(RK))||[]}
 function saveResoluciones(d){localStorage.setItem(RK,JSON.stringify(d))}
 function loadTareas(){try{return JSON.parse(localStorage.getItem(TK))||[]}catch(e){return[]}}
 function saveTareas(d){localStorage.setItem(TK,JSON.stringify(d))}
+function loadSeguimiento(){try{return JSON.parse(localStorage.getItem('npl_seguimiento_v1'))||[]}catch(e){return[]}}
+function saveSeguimiento(d){localStorage.setItem('npl_seguimiento_v1',JSON.stringify(d))}
 
 // ── BASE DE JUZGADOS NPL ──────────────────────────────────────────────────────
 const JUZGADOS_DB={
@@ -807,6 +809,7 @@ function guardarOp(tipo){
 function renderNego(d,c,sc,cid){
   const n=calcNego(d,c,sc);
   const obs=(d.obs||'').toLowerCase();
+  const esExtrajudicial=d.estrategia==='extrajudicial';
   let analObs=`Rango: €${fmt(n.precioMin)}–€${fmt(n.precioMax)}. Primera oferta: €${fmt(n.primeraOferta)}.`;
   const m=obs.match(/(\d[\d.,]+)/);
   if(m){const pb=parseFloat(m[1].replace(',',''));if(pb>1000){
@@ -814,6 +817,21 @@ function renderNego(d,c,sc,cid){
     else if(pb>n.precioOpt)analObs=`Precio solicitado (~€${fmt(pb)}) por encima del óptimo. Abre con €${fmt(n.primeraOferta)}.`;
     else analObs=`Precio solicitado (~€${fmt(pb)}) aceptable. Intenta bajar a €${fmt(n.primeraOferta)}.`;
   }}
+  const factoresRiesgoHtml=esExtrajudicial
+    ?`<div class="riesgo-grid">
+      ${ri(d.tipo==='hipotecario_segunda','2ª vivienda — sin riesgo vulnerabilidad','1ª vivienda — vulnerabilidad posible')}
+      ${ri(!(d.cargas>0),'Sin cargas posteriores',`Cargas posteriores: €${fmt(d.cargas)}`)}
+      ${ri(c.ltv<70,`LTV ${pct(c.ltv)} — OK`,`LTV ${pct(c.ltv)} — alto`)}
+      ${ri(d.ocupacion==='vacio','Vacío','Ocupado — coste adicional')}
+    </div>`
+    :`<div class="riesgo-grid">
+      ${ri(d.tipo==='hipotecario_segunda','2ª vivienda — sin riesgo vulnerabilidad','1ª vivienda — vulnerabilidad posible')}
+      ${ri(d.clausulas==='si','Cláusulas resueltas',d.clausulas==='pendiente'?'Cláusulas pendientes':'Sin revisar')}
+      ${ri(d.epi==='bajo','EPI bajo',d.epi==='alto'?'EPI alto — riesgo quita':'EPI medio')}
+      ${ri(c.ltv<70,`LTV ${pct(c.ltv)} — OK`,`LTV ${pct(c.ltv)} — alto`)}
+      ${ri(d.ocupacion==='vacio','Vacío','Ocupado — coste adicional')}
+      ${ri(d.fase==='subasta_senalada'||d.fase==='tasacion_hecha','Fase avanzada','Fase inicial')}
+    </div>`;
   document.getElementById(cid).innerHTML=`
     <div class="nego-range">
       <div class="nego-box nego-min"><div class="nego-val" style="color:#7A1A1A">€${fmt(n.precioMin)}</div><div class="nego-lbl" style="color:#7A1A1A">Mínimo</div><div class="nego-sub" style="color:#7A1A1A">Quita ${n.qMin}% · +${n.margenMinPct}% sobre inversión<br>No ceder por debajo</div></div>
@@ -827,16 +845,157 @@ function renderNego(d,c,sc,cid){
     <div class="estrategia-box ${n.estClass}"><div style="font-size:12px;font-weight:700;margin-bottom:3px">${n.est}</div><div style="font-size:12px;line-height:1.6">${n.estTxt}</div></div>
     ${obs?`<div style="background:#F7F9FC;border:0.5px solid #DDE3EC;border-radius:8px;padding:11px 13px;margin-top:8px"><div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Tu situación</div><div style="font-size:12px;color:#0A1628;line-height:1.7">${analObs}</div></div>`:''}
     <div style="margin-top:11px"><div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Factores de riesgo</div>
-    <div class="riesgo-grid">
-      ${ri(d.tipo==='hipotecario_segunda','2ª vivienda — sin riesgo vulnerabilidad','1ª vivienda — vulnerabilidad posible')}
-      ${ri(d.clausulas==='si','Cláusulas resueltas',d.clausulas==='pendiente'?'Cláusulas pendientes':'Sin revisar')}
-      ${ri(d.epi==='bajo','EPI bajo',d.epi==='alto'?'EPI alto — riesgo quita':'EPI medio')}
-      ${ri(c.ltv<70,`LTV ${pct(c.ltv)} — OK`,`LTV ${pct(c.ltv)} — alto`)}
-      ${ri(d.ocupacion==='vacio','Vacío','Ocupado — coste adicional')}
-      ${ri(d.fase==='subasta_senalada'||d.fase==='tasacion_hecha','Fase avanzada','Fase inicial')}
-    </div></div>`;
+    ${factoresRiesgoHtml}</div>
+    ${(d.estrategia==='extrajudicial'||d.estrategia==='dual')?renderViasExtrajudiciales(d,c):''}`;
 }
 function ri(ok,a,b){const c=ok?'r-ok':'r-warn';return`<div class="riesgo-item ${c}"><span style="font-size:13px">${ok?'✓':'⚠'}</span><span>${ok?a:b}</span></div>`;}
+
+// ── ANÁLISIS DE VÍAS EXTRAJUDICIALES ──────────────────────────────────────────
+function analizarViasExtrajudiciales(d,c){
+  const obs=(d.obs||'').toLowerCase();
+  const hayCargasPosteriores=(d.cargas||0)>0;
+  const vacio=d.ocupacion==='vacio';
+  const ocupaDeudor=d.ocupacion==='deudor';
+  const menosionaInteres=obs.includes('interesad')||obs.includes('quiere comprar')||obs.includes('familiar');
+  const mencionaQuita=obs.includes('quita')||obs.includes('descuento')||obs.includes('negocia');
+  const mencionaVenta=obs.includes('vender')||obs.includes('venta')||obs.includes('comprador');
+  const mencionaResistencia=obs.includes('no quiere')||obs.includes('se niega')||obs.includes('no responde')||obs.includes('no contesta');
+
+  const vias=[];
+
+  // 1. Dación en pago — requiere NO cargas posteriores (si las hay, se arrastran y no es viable)
+  vias.push({
+    nombre:'Dación en pago',
+    viable:!hayCargasPosteriores,
+    motivo:!hayCargasPosteriores
+      ?'Sin cargas posteriores detectadas — el deudor puede entregar la vivienda y extinguir la deuda de forma directa, evitando la subasta.'
+      :'Existen cargas posteriores registradas — la dación en pago no las cancela, por lo que tú asumirías esas cargas al recibir la propiedad. Vía no recomendable salvo que el importe de esas cargas sea asumible.',
+    prioridad:!hayCargasPosteriores?1:5
+  });
+
+  // 2. Venta del crédito al deudor/familiar con quita
+  vias.push({
+    nombre:'Venta del crédito al deudor o familiar (con quita)',
+    viable:true,
+    motivo:menosionaInteres
+      ?'Detectado posible interés de un familiar o tercero en las observaciones — vía con alta probabilidad de cierre rápido.'
+      :'Siempre disponible si el deudor o su entorno quiere conservar la vivienda. Ofrece cancelación de la deuda total por un importe pactado, normalmente entre el precio de compra del crédito +20-40% y el valor de mercado.',
+    prioridad:menosionaInteres?1:3
+  });
+
+  // 3. Venta de la vivienda por el deudor, pago al cierre
+  vias.push({
+    nombre:'Venta por el deudor con pago al cierre',
+    viable:vacio===false,
+    motivo:mencionaVenta
+      ?'El deudor ya parece estar gestionando una venta — facilítale el proceso fijando el importe de cancelación pactado, cobrable en el momento del otorgamiento de la escritura de compraventa.'
+      :'Viable si el deudor tiene capacidad de gestionar la venta y disposición a colaborar. El diferencial entre lo pactado contigo y el precio de venta es para el deudor, lo que incentiva su cooperación.',
+    prioridad:mencionaVenta?1:3
+  });
+
+  // 4. Acta notarial de exoneración de cargas con poder de venta
+  vias.push({
+    nombre:'Acta notarial de exoneración con poder de venta',
+    viable:!hayCargasPosteriores,
+    motivo:!hayCargasPosteriores
+      ?'Permite que tú gestiones directamente la venta del inmueble sin pasar por subasta, cancelando cargas en el momento de la venta a comprador final. Requiere colaboración notarial del deudor.'
+      :'Con cargas posteriores vigentes esta vía es más compleja, ya que la cancelación de cargas mediante acta notarial no tiene el mismo efecto purgativo que la subasta judicial.',
+    prioridad:!hayCargasPosteriores?2:5
+  });
+
+  // Filtrar solo viables y ordenar por prioridad
+  const viasViables=vias.filter(v=>v.viable).sort((a,b)=>a.prioridad-b.prioridad);
+  const viasDescartadas=vias.filter(v=>!v.viable);
+
+  let alertaResistencia='';
+  if(mencionaResistencia){
+    alertaResistencia='\n⚠️ Se detecta posible falta de colaboración del deudor en las observaciones. Si no hay respuesta en plazo razonable, valora escalar a estrategia Dual (mantener vía extrajudicial abierta mientras se inicia la vía judicial en paralelo) para no perder posición negociadora.';
+  }
+
+  return{viasViables,viasDescartadas,alertaResistencia,hayCargasPosteriores};
+}
+
+function renderViasExtrajudiciales(d,c){
+  const analisis=analizarViasExtrajudiciales(d,c);
+  if(!analisis.viasViables.length)return'';
+  return`<div style="margin-top:11px"><div style="font-size:10px;font-weight:600;color:#8A9BB0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🤝 Vías extrajudiciales recomendadas (ordenadas por viabilidad)</div>
+    ${analisis.viasViables.map((v,i)=>`<div style="background:${i===0?'#EBF7E2':'#F7F9FC'};border:0.5px solid ${i===0?'#B2D98A':'#DDE3EC'};border-radius:9px;padding:11px 13px;margin-bottom:7px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
+        ${i===0?'<span class="badge bok">RECOMENDADA</span>':''}
+        <span style="font-size:12px;font-weight:700;color:#0A1628">${v.nombre}</span>
+      </div>
+      <div style="font-size:12px;color:#4A5568;line-height:1.6">${v.motivo}</div>
+    </div>`).join('')}
+    ${analisis.viasDescartadas.length?`<div style="margin-top:8px"><div style="font-size:10px;color:#8A9BB0;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Descartadas o con reservas</div>${analisis.viasDescartadas.map(v=>`<div style="font-size:11px;color:#8A9BB0;padding:5px 0">• <strong>${v.nombre}</strong>: ${v.motivo}</div>`).join('')}</div>`:''}
+    ${analisis.alertaResistencia?`<div style="margin-top:8px;padding:9px 12px;background:#FEF3E2;border:0.5px solid #F5C878;border-radius:8px;font-size:12px;color:#7A4A0A;line-height:1.6">${analisis.alertaResistencia}</div>`:''}
+  </div>`;
+}
+
+// ── SEGUIMIENTO DE NEGOCIACIÓN ─────────────────────────────────────────────────
+const ESTADOS_NEGO=[
+  {v:'sin_contacto',l:'Sin contacto',c:'#8A9BB0'},
+  {v:'contactado',l:'Contactado',c:'#185FA5'},
+  {v:'en_negociacion',l:'En negociación',c:'#7A4A0A'},
+  {v:'oferta_enviada',l:'Oferta enviada',c:'#8A5A0A'},
+  {v:'contraoferta_recibida',l:'Contraoferta recibida',c:'#854F0B'},
+  {v:'acuerdo_cerca',l:'Acuerdo cerca',c:'#2A6E14'},
+  {v:'cerrado',l:'Acuerdo cerrado',c:'#2A5E12'},
+  {v:'sin_respuesta',l:'Sin respuesta',c:'#7A1A1A'},
+  {v:'rechazado',l:'Rechazado',c:'#7A1A1A'}
+];
+
+function renderSeguimiento(d,id,col){
+  const contId=`ft-seguimiento-${(d.ref||'').replace(/[^a-zA-Z0-9]/g,'_')}`;
+  const cont=document.getElementById(contId);
+  if(!cont)return;
+  const entradas=loadSeguimiento().filter(s=>s.opRef===d.ref).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  const estadoActual=entradas.length?entradas[0].estado:'sin_contacto';
+  const estadoInfo=ESTADOS_NEGO.find(e=>e.v===estadoActual)||ESTADOS_NEGO[0];
+
+  const historialHtml=entradas.length?entradas.map(e=>{
+    const ei=ESTADOS_NEGO.find(x=>x.v===e.estado)||ESTADOS_NEGO[0];
+    return`<div style="display:flex;gap:10px;padding:9px 0;border-bottom:0.5px solid #EEF1F5">
+      <div style="width:3px;background:${ei.c};border-radius:2px;flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span class="badge" style="background:${ei.c}15;color:${ei.c};border:0.5px solid ${ei.c}40">${ei.l}</span>
+          <span style="font-size:10px;color:#8A9BB0">${new Date(e.fecha).toLocaleDateString('es-ES')}</span>
+        </div>
+        ${e.nota?`<div style="font-size:12px;color:#0A1628;margin-top:5px;line-height:1.6">${e.nota}</div>`:''}
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty" style="padding:14px 0">Sin entradas de seguimiento</div>';
+
+  cont.innerHTML=`
+    <div class="panel" style="margin-top:12px">
+      <div class="phead">
+        <span class="ptitle">📞 Seguimiento de negociación</span>
+        <span class="badge" style="background:${estadoInfo.c}15;color:${estadoInfo.c};border:0.5px solid ${estadoInfo.c}40">Estado actual: ${estadoInfo.l}</span>
+      </div>
+      <div class="gasto-form" style="margin-top:0">
+        <div class="g2">
+          <div class="field"><label>Nuevo estado</label>
+            <select id="sg-estado">${ESTADOS_NEGO.map(e=>`<option value="${e.v}">${e.l}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>Fecha</label><input type="date" id="sg-fecha" value="${new Date().toISOString().split('T')[0]}"></div>
+        </div>
+        <div class="field"><label>Nota (qué se ha hablado, próximos pasos...)</label><textarea id="sg-nota" placeholder="Ej: hablado con el deudor, pide más tiempo. Propone pagar 80.000€ en 2 plazos..."></textarea></div>
+        <button class="btn btn-blue btn-sm" style="width:100%" onclick="addSeguimiento('${d.ref}','${id}','${col}')">➕ Añadir entrada</button>
+      </div>
+      <div style="margin-top:12px">${historialHtml}</div>
+    </div>`;
+}
+
+function addSeguimiento(opRef,id,col){
+  const estado=document.getElementById('sg-estado')?.value||'sin_contacto';
+  const fecha=document.getElementById('sg-fecha')?.value||new Date().toISOString().split('T')[0];
+  const nota=document.getElementById('sg-nota')?.value||'';
+  const entrada={id:Date.now().toString(),opRef,estado,fecha,nota};
+  const lista=loadSeguimiento();lista.push(entrada);saveSeguimiento(lista);
+  const inv=col==='inversion'?loadInv():loadEst();
+  const d=inv.find(o=>o.id===id);
+  if(d)renderSeguimiento(d,id,col);
+}
 
 function generarDictamen(d,c,sc){
   const verd=sc>=80?'RECOMENDADA':sc>=60?'VIABLE CON CAUTELAS':'ALTO RIESGO';
@@ -848,11 +1007,18 @@ function generarDictamen(d,c,sc){
   if(c.ltv>90)r.push(`• LTV ${pct(c.ltv)} — colchón insuficiente`);
   if(c.rs<0)r.push(`• ROI estrés negativo (${pct(c.rs)})`);
   let plazoTxt='';
+  let viasTxt='';
   if(d.estrategia!=='extrajudicial'){
     const pj=getPlazosJuzgado(d.juzgado,d.direccion);
     const fuenteTxt=pj.fuente==='propios'?'datos propios':pj.fuente==='cgpj'?'estimación CGPJ':'estimación genérica';
     if((pj.total||0)>36)r.push(`• Plazo judicial estimado elevado: ~${pj.total} meses (${fuenteTxt}) — penaliza score y TIR real`);
     plazoTxt=`\nPLAZO JUDICIAL${d.juzgado?` (${d.juzgado})`:''}: Admisión ~${pj.admision||'?'}m · Subasta ~${pj.subasta||'?'}m · Total ~${pj.total||'?'}m (${fuenteTxt})\n`;
+  }
+  if(d.estrategia==='extrajudicial'||d.estrategia==='dual'){
+    const analisis=analizarViasExtrajudiciales(d,c);
+    if(analisis.viasViables.length){
+      viasTxt=`\nVÍAS EXTRAJUDICIALES VIABLES:\n${analisis.viasViables.map((v,i)=>`${i+1}. ${v.nombre}${i===0?' (RECOMENDADA)':''}: ${v.motivo}`).join('\n')}\n`;
+    }
   }
   if(!r.length)r.push('• Sin riesgos críticos identificados');
   const n=calcNego(d,c,sc);
@@ -861,7 +1027,7 @@ function generarDictamen(d,c,sc){
   p.push(`2. Precio máximo absoluto: €${fmt(n.precioMax)}`);
   p.push('3. Notificar cesión al deudor y al juzgado (art. 16 LEC)');
   if(d.clausulas==='no_revisadas')p.push('4. Revisar cláusulas abusivas antes del cierre');
-  return `DICTAMEN: ${d.ref}\n${'─'.repeat(34)}\nVALORACIÓN: ${verd} (${sc}/100)\n${d.direccion?`INMUEBLE: ${d.direccion}\n`:''}${d.refCatastral?`REF. CATASTRAL: ${d.refCatastral}\n`:''}${plazoTxt}\n1. RIESGOS\n${r.join('\n')}\n\n2. NEGOCIACIÓN\nPrimera oferta: €${fmt(n.primeraOferta)}\nÓptimo: €${fmt(n.precioOpt)} | Máximo: €${fmt(n.precioMax)}\n\n3. PASOS\n${p.join('\n')}\n${'─'.repeat(34)}`;
+  return `DICTAMEN: ${d.ref}\n${'─'.repeat(34)}\nVALORACIÓN: ${verd} (${sc}/100)\n${d.direccion?`INMUEBLE: ${d.direccion}\n`:''}${d.refCatastral?`REF. CATASTRAL: ${d.refCatastral}\n`:''}${plazoTxt}${viasTxt}\n1. RIESGOS\n${r.join('\n')}\n\n2. NEGOCIACIÓN\nPrimera oferta: €${fmt(n.primeraOferta)}\nÓptimo: €${fmt(n.precioOpt)} | Máximo: €${fmt(n.precioMax)}\n\n3. PASOS\n${p.join('\n')}\n${'─'.repeat(34)}`;
 }
 
 // ── RENDER FICHA FISCAL ───────────────────────────────────────────────────────
@@ -967,8 +1133,9 @@ function abrirFicha(id,col){
   }
 
   // NEGOCIACIÓN
-  document.getElementById('ft-negociacion').innerHTML='<div id="ft-nego-inner"></div>';
+  document.getElementById('ft-negociacion').innerHTML=`<div id="ft-nego-inner"></div><div id="ft-seguimiento-${(d.ref||'').replace(/[^a-zA-Z0-9]/g,'_')}"></div>`;
   renderNego(d,c,sc,'ft-nego-inner');
+  renderSeguimiento(d,id,col);
 
   // INMUEBLE
   document.getElementById('ft-inmueble').innerHTML=`
