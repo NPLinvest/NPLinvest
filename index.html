@@ -169,6 +169,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="ni" onclick="showPage('inversiones')">💼 Inversiones</div>
   <div class="ni" onclick="showPage('estudio')">🔍 En estudio</div>
   <div class="ni" onclick="showPage('alertas')">🔔 Alertas</div>
+  <div class="ni" onclick="showPage('juzgados')">⚖️ Juzgados</div>
+  <div class="ni" onclick="showPage('juzgados')">⚖️ Juzgados</div>
 </div>
 <div class="body">
 
@@ -221,9 +223,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="panel"><div id="alertas-lista"></div></div>
 </div>
 
+<!-- JUZGADOS -->
+<div id="page-juzgados" class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div><div class="pt">Juzgados</div><div class="ps">Plazos reales de ejecuciones hipotecarias por juzgado — actualiza según tu experiencia</div></div>
+    <div style="display:flex;gap:8px">
+      <select id="j-filtro-prov" onchange="filtrarJuzgados()" style="padding:7px 10px;border:0.5px solid #C8D0DC;border-radius:7px;font-size:12px;color:#0A1628;background:#fff">
+        <option value="">Todas las provincias</option>
+      </select>
+      <input type="text" id="j-buscar" placeholder="Buscar juzgado..." oninput="filtrarJuzgados()" style="padding:7px 10px;border:0.5px solid #C8D0DC;border-radius:7px;font-size:12px;color:#0A1628;background:#fff;width:200px">
+    </div>
+  </div>
+  <div class="panel" style="padding:0">
+    <table class="dtable" id="j-tabla">
+      <thead>
+        <tr>
+          <th style="padding:10px 14px">Juzgado</th>
+          <th style="padding:10px 14px">Provincia</th>
+          <th class="tr" style="padding:10px 14px">Admisión<br><span style="font-weight:400;font-size:9px">meses</span></th>
+          <th class="tr" style="padding:10px 14px">Subasta<br><span style="font-weight:400;font-size:9px">meses</span></th>
+          <th class="tr" style="padding:10px 14px">Total<br><span style="font-weight:400;font-size:9px">meses</span></th>
+          <th style="padding:10px 14px">Notas</th>
+          <th style="padding:10px 14px"></th>
+        </tr>
+      </thead>
+      <tbody id="j-tbody"></tbody>
+    </table>
+  </div>
 </div>
 
-<!-- MODAL FORMULARIO -->
+
 <div class="modal-overlay" id="form-overlay" onclick="closeMod('form-overlay',event)">
   <div class="modal"><div class="modal-header"><h2 id="form-title">Nueva operación</h2><button class="modal-close" onclick="closeMod('form-overlay')">✕</button></div>
   <div class="modal-body" id="form-body"></div></div>
@@ -245,7 +274,47 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <script>
 // ── DATOS ─────────────────────────────────────────────────────────────────────
-const SK='npl_inv_v2';const EK='npl_est_v2';const GK='npl_gas_v2';
+const SK='npl_inv_v2';const EK='npl_est_v2';const GK='npl_gas_v2';const JK='npl_juzgados_v1';
+
+// ── BASE DE JUZGADOS NPL ──────────────────────────────────────────────────────
+const JUZGADOS_DB={
+  "Madrid":["J. 1ª Instancia nº 1 Madrid","J. 1ª Instancia nº 2 Madrid","J. 1ª Instancia nº 3 Madrid","J. 1ª Instancia nº 4 Madrid","J. 1ª Instancia nº 5 Madrid","J. 1ª Instancia nº 6 Madrid","J. 1ª Instancia nº 7 Madrid","J. 1ª Instancia nº 8 Madrid","J. 1ª Instancia nº 9 Madrid","J. 1ª Instancia nº 10 Madrid","J. 1ª Instancia nº 11 Madrid","J. 1ª Instancia nº 12 Madrid","J. 1ª Instancia nº 13 Madrid","J. 1ª Instancia nº 14 Madrid","J. 1ª Instancia nº 15 Madrid","J. 1ª Instancia nº 16 Madrid","J. 1ª Instancia nº 17 Madrid","J. 1ª Instancia nº 18 Madrid","J. 1ª Instancia nº 19 Madrid","J. 1ª Instancia nº 20 Madrid","J. 1ª Instancia nº 21 Madrid","J. 1ª Instancia nº 22 Madrid","J. 1ª Instancia nº 23 Madrid","J. 1ª Instancia nº 24 Madrid","J. 1ª Instancia nº 25 Madrid","J. 1ª Instancia nº 26 Madrid","J. 1ª Instancia nº 27 Madrid","J. 1ª Instancia nº 28 Madrid","J. 1ª Instancia nº 29 Madrid","J. 1ª Instancia nº 30 Madrid","J. 1ª Instancia nº 31 Madrid","J. 1ª Instancia nº 32 Madrid","J. 1ª Instancia nº 1 Alcalá de Henares","J. 1ª Instancia nº 2 Alcalá de Henares","J. 1ª Instancia nº 1 Móstoles","J. 1ª Instancia nº 2 Móstoles","J. 1ª Instancia nº 1 Getafe","J. 1ª Instancia nº 1 Leganés","J. 1ª Instancia nº 1 Torrejón de Ardoz","J. 1ª Instancia nº 1 Fuenlabrada","J. 1ª Instancia nº 1 Collado Villalba"],
+  "Barcelona":["J. 1ª Instancia nº 1 Barcelona","J. 1ª Instancia nº 2 Barcelona","J. 1ª Instancia nº 3 Barcelona","J. 1ª Instancia nº 4 Barcelona","J. 1ª Instancia nº 5 Barcelona","J. 1ª Instancia nº 6 Barcelona","J. 1ª Instancia nº 7 Barcelona","J. 1ª Instancia nº 8 Barcelona","J. 1ª Instancia nº 9 Barcelona","J. 1ª Instancia nº 10 Barcelona","J. 1ª Instancia nº 1 Badalona","J. 1ª Instancia nº 1 Hospitalet de Llobregat","J. 1ª Instancia nº 1 Terrassa","J. 1ª Instancia nº 1 Sabadell","J. 1ª Instancia nº 1 Mataró","J. 1ª Instancia nº 1 Cornellà de Llobregat"],
+  "Valencia":["J. 1ª Instancia nº 1 Valencia","J. 1ª Instancia nº 2 Valencia","J. 1ª Instancia nº 3 Valencia","J. 1ª Instancia nº 4 Valencia","J. 1ª Instancia nº 5 Valencia","J. 1ª Instancia nº 6 Valencia","J. 1ª Instancia nº 1 Alicante","J. 1ª Instancia nº 2 Alicante","J. 1ª Instancia nº 1 Castellón","J. 1ª Instancia nº 1 Torrevieja","J. 1ª Instancia nº 1 Benidorm","J. 1ª Instancia nº 1 Elche"],
+  "Málaga":["J. 1ª Instancia nº 1 Málaga","J. 1ª Instancia nº 2 Málaga","J. 1ª Instancia nº 3 Málaga","J. 1ª Instancia nº 4 Málaga","J. 1ª Instancia nº 5 Málaga","J. 1ª Instancia nº 1 Marbella","J. 1ª Instancia nº 2 Marbella","J. 1ª Instancia nº 1 Fuengirola","J. 1ª Instancia nº 1 Torremolinos","J. 1ª Instancia nº 1 Estepona","J. 1ª Instancia nº 1 Vélez-Málaga"],
+  "Sevilla":["J. 1ª Instancia nº 1 Sevilla","J. 1ª Instancia nº 2 Sevilla","J. 1ª Instancia nº 3 Sevilla","J. 1ª Instancia nº 4 Sevilla","J. 1ª Instancia nº 5 Sevilla","J. 1ª Instancia nº 1 Dos Hermanas","J. 1ª Instancia nº 1 Utrera"],
+  "Murcia":["J. 1ª Instancia nº 1 Murcia","J. 1ª Instancia nº 2 Murcia","J. 1ª Instancia nº 3 Murcia","J. 1ª Instancia nº 1 Cartagena","J. 1ª Instancia nº 2 Cartagena","J. 1ª Instancia nº 1 Lorca","J. 1ª Instancia nº 1 Molina de Segura"],
+  "Zaragoza":["J. 1ª Instancia nº 1 Zaragoza","J. 1ª Instancia nº 2 Zaragoza","J. 1ª Instancia nº 3 Zaragoza","J. 1ª Instancia nº 1 Huesca","J. 1ª Instancia nº 1 Teruel"],
+  "Palma":["J. 1ª Instancia nº 1 Palma","J. 1ª Instancia nº 2 Palma","J. 1ª Instancia nº 3 Palma","J. 1ª Instancia nº 1 Ibiza","J. 1ª Instancia nº 1 Manacor"],
+  "Las Palmas":["J. 1ª Instancia nº 1 Las Palmas de Gran Canaria","J. 1ª Instancia nº 2 Las Palmas de Gran Canaria","J. 1ª Instancia nº 1 Santa Cruz de Tenerife","J. 1ª Instancia nº 2 Santa Cruz de Tenerife","J. 1ª Instancia nº 1 Arrecife"]
+};
+const PLAZOS_CGPJ={
+  "Madrid":{admision:4,subasta:18,total:24},"Barcelona":{admision:5,subasta:22,total:28},
+  "Valencia":{admision:6,subasta:24,total:32},"Málaga":{admision:7,subasta:26,total:36},
+  "Sevilla":{admision:6,subasta:22,total:30},"Murcia":{admision:5,subasta:20,total:27},
+  "Zaragoza":{admision:4,subasta:16,total:22},"Palma":{admision:5,subasta:18,total:25},
+  "Las Palmas":{admision:6,subasta:20,total:28}
+};
+function loadJuzgados(){try{return JSON.parse(localStorage.getItem(JK))||{}}catch(e){return{}}}
+function saveJuzgadosData(d){localStorage.setItem(JK,JSON.stringify(d))}
+function detectarProvincia(direccion){
+  if(!direccion)return null;
+  const d=direccion.toLowerCase();
+  const mapaProv={madrid:'Madrid',barcelona:'Barcelona',valencia:'Valencia',alicante:'Valencia',castellon:'Valencia',malaga:'Málaga',marbella:'Málaga',sevilla:'Sevilla',murcia:'Murcia',cartagena:'Murcia',zaragoza:'Zaragoza',palma:'Palma',mallorca:'Palma','las palmas':'Las Palmas',tenerife:'Las Palmas'};
+  for(const[k,v] of Object.entries(mapaProv)){if(d.includes(k))return v;}
+  return null;
+}
+function getJuzgadosDeProvincia(prov){return prov&&JUZGADOS_DB[prov]?JUZGADOS_DB[prov]:[];}
+function getPlazosJuzgado(juzgadoNombre,direccion){
+  const datos=loadJuzgados();
+  if(juzgadoNombre&&datos[juzgadoNombre]&&(datos[juzgadoNombre].admision||datos[juzgadoNombre].subasta||datos[juzgadoNombre].total)){
+    return{admision:datos[juzgadoNombre].admision||null,subasta:datos[juzgadoNombre].subasta||null,total:datos[juzgadoNombre].total||null,fuente:'propios'};
+  }
+  const prov=detectarProvincia(direccion);
+  if(prov&&PLAZOS_CGPJ[prov])return{...PLAZOS_CGPJ[prov],fuente:'cgpj',provincia:prov};
+  return{admision:6,subasta:22,total:30,fuente:'estimacion'};
+}
+
 let curDocs=[],curFormTipo='inversion',mapInst=null,addrTimer=null;
 
 const fmt=x=>(parseFloat(x)||0).toLocaleString('es-ES',{maximumFractionDigits:0});
@@ -340,6 +409,58 @@ function calcNeto(d,go){
   const tn=(d.meses||12)>0?(Math.pow(1+rn/100,12/(d.meses||12))-1)*100:0;
   return{...c,totalGastos:tg,gnNeto:gn,roiNeto:rn,tirNeto:tn};
 }
+// ── BASE DE JUZGADOS ──────────────────────────────────────────────────────────
+const JUZGADOS_DB = {
+  "Madrid":["J. 1ª Instancia nº 1 Madrid","J. 1ª Instancia nº 2 Madrid","J. 1ª Instancia nº 3 Madrid","J. 1ª Instancia nº 4 Madrid","J. 1ª Instancia nº 5 Madrid","J. 1ª Instancia nº 6 Madrid","J. 1ª Instancia nº 7 Madrid","J. 1ª Instancia nº 8 Madrid","J. 1ª Instancia nº 9 Madrid","J. 1ª Instancia nº 10 Madrid","J. 1ª Instancia nº 11 Madrid","J. 1ª Instancia nº 12 Madrid","J. 1ª Instancia nº 13 Madrid","J. 1ª Instancia nº 14 Madrid","J. 1ª Instancia nº 15 Madrid","J. 1ª Instancia nº 16 Madrid","J. 1ª Instancia nº 17 Madrid","J. 1ª Instancia nº 18 Madrid","J. 1ª Instancia nº 19 Madrid","J. 1ª Instancia nº 20 Madrid","J. 1ª Instancia nº 21 Madrid","J. 1ª Instancia nº 22 Madrid","J. 1ª Instancia nº 23 Madrid","J. 1ª Instancia nº 24 Madrid","J. 1ª Instancia nº 25 Madrid","J. 1ª Instancia nº 26 Madrid","J. 1ª Instancia nº 27 Madrid","J. 1ª Instancia nº 28 Madrid","J. 1ª Instancia nº 29 Madrid","J. 1ª Instancia nº 30 Madrid","J. 1ª Instancia nº 31 Madrid","J. 1ª Instancia nº 32 Madrid","J. 1ª Instancia nº 1 Alcalá de Henares","J. 1ª Instancia nº 2 Alcalá de Henares","J. 1ª Instancia nº 3 Alcalá de Henares","J. 1ª Instancia nº 1 Móstoles","J. 1ª Instancia nº 2 Móstoles","J. 1ª Instancia nº 3 Móstoles","J. 1ª Instancia nº 1 Getafe","J. 1ª Instancia nº 2 Getafe","J. 1ª Instancia nº 1 Leganés","J. 1ª Instancia nº 2 Leganés","J. 1ª Instancia nº 1 Torrejón de Ardoz","J. 1ª Instancia nº 1 Fuenlabrada","J. 1ª Instancia nº 2 Fuenlabrada","J. 1ª Instancia nº 1 Collado Villalba"],
+  "Barcelona":["J. 1ª Instancia nº 1 Barcelona","J. 1ª Instancia nº 2 Barcelona","J. 1ª Instancia nº 3 Barcelona","J. 1ª Instancia nº 4 Barcelona","J. 1ª Instancia nº 5 Barcelona","J. 1ª Instancia nº 6 Barcelona","J. 1ª Instancia nº 7 Barcelona","J. 1ª Instancia nº 8 Barcelona","J. 1ª Instancia nº 9 Barcelona","J. 1ª Instancia nº 10 Barcelona","J. 1ª Instancia nº 11 Barcelona","J. 1ª Instancia nº 12 Barcelona","J. 1ª Instancia nº 13 Barcelona","J. 1ª Instancia nº 14 Barcelona","J. 1ª Instancia nº 15 Barcelona","J. 1ª Instancia nº 16 Barcelona","J. 1ª Instancia nº 1 Badalona","J. 1ª Instancia nº 2 Badalona","J. 1ª Instancia nº 1 Hospitalet de Llobregat","J. 1ª Instancia nº 2 Hospitalet de Llobregat","J. 1ª Instancia nº 3 Hospitalet de Llobregat","J. 1ª Instancia nº 1 Terrassa","J. 1ª Instancia nº 2 Terrassa","J. 1ª Instancia nº 1 Sabadell","J. 1ª Instancia nº 2 Sabadell","J. 1ª Instancia nº 1 Mataró","J. 1ª Instancia nº 1 Cornellà de Llobregat"],
+  "Valencia":["J. 1ª Instancia nº 1 Valencia","J. 1ª Instancia nº 2 Valencia","J. 1ª Instancia nº 3 Valencia","J. 1ª Instancia nº 4 Valencia","J. 1ª Instancia nº 5 Valencia","J. 1ª Instancia nº 6 Valencia","J. 1ª Instancia nº 7 Valencia","J. 1ª Instancia nº 8 Valencia","J. 1ª Instancia nº 9 Valencia","J. 1ª Instancia nº 10 Valencia","J. 1ª Instancia nº 11 Valencia","J. 1ª Instancia nº 12 Valencia","J. 1ª Instancia nº 1 Alicante","J. 1ª Instancia nº 2 Alicante","J. 1ª Instancia nº 3 Alicante","J. 1ª Instancia nº 4 Alicante","J. 1ª Instancia nº 5 Alicante","J. 1ª Instancia nº 1 Castellón","J. 1ª Instancia nº 2 Castellón","J. 1ª Instancia nº 3 Castellón","J. 1ª Instancia nº 1 Torrevieja","J. 1ª Instancia nº 1 Benidorm","J. 1ª Instancia nº 1 Elche","J. 1ª Instancia nº 2 Elche"],
+  "Málaga":["J. 1ª Instancia nº 1 Málaga","J. 1ª Instancia nº 2 Málaga","J. 1ª Instancia nº 3 Málaga","J. 1ª Instancia nº 4 Málaga","J. 1ª Instancia nº 5 Málaga","J. 1ª Instancia nº 6 Málaga","J. 1ª Instancia nº 7 Málaga","J. 1ª Instancia nº 8 Málaga","J. 1ª Instancia nº 9 Málaga","J. 1ª Instancia nº 10 Málaga","J. 1ª Instancia nº 1 Marbella","J. 1ª Instancia nº 2 Marbella","J. 1ª Instancia nº 3 Marbella","J. 1ª Instancia nº 1 Fuengirola","J. 1ª Instancia nº 1 Torremolinos","J. 1ª Instancia nº 1 Estepona","J. 1ª Instancia nº 1 Vélez-Málaga","J. 1ª Instancia nº 1 Antequera"],
+  "Sevilla":["J. 1ª Instancia nº 1 Sevilla","J. 1ª Instancia nº 2 Sevilla","J. 1ª Instancia nº 3 Sevilla","J. 1ª Instancia nº 4 Sevilla","J. 1ª Instancia nº 5 Sevilla","J. 1ª Instancia nº 6 Sevilla","J. 1ª Instancia nº 7 Sevilla","J. 1ª Instancia nº 8 Sevilla","J. 1ª Instancia nº 9 Sevilla","J. 1ª Instancia nº 10 Sevilla","J. 1ª Instancia nº 11 Sevilla","J. 1ª Instancia nº 1 Dos Hermanas","J. 1ª Instancia nº 1 Utrera","J. 1ª Instancia nº 1 Écija"],
+  "Murcia":["J. 1ª Instancia nº 1 Murcia","J. 1ª Instancia nº 2 Murcia","J. 1ª Instancia nº 3 Murcia","J. 1ª Instancia nº 4 Murcia","J. 1ª Instancia nº 5 Murcia","J. 1ª Instancia nº 6 Murcia","J. 1ª Instancia nº 7 Murcia","J. 1ª Instancia nº 1 Cartagena","J. 1ª Instancia nº 2 Cartagena","J. 1ª Instancia nº 3 Cartagena","J. 1ª Instancia nº 1 Lorca","J. 1ª Instancia nº 1 Molina de Segura","J. 1ª Instancia nº 1 Mazarrón","J. 1ª Instancia nº 1 San Javier"],
+  "Zaragoza":["J. 1ª Instancia nº 1 Zaragoza","J. 1ª Instancia nº 2 Zaragoza","J. 1ª Instancia nº 3 Zaragoza","J. 1ª Instancia nº 4 Zaragoza","J. 1ª Instancia nº 5 Zaragoza","J. 1ª Instancia nº 6 Zaragoza","J. 1ª Instancia nº 7 Zaragoza","J. 1ª Instancia nº 8 Zaragoza","J. 1ª Instancia nº 1 Huesca","J. 1ª Instancia nº 1 Teruel"],
+  "Palma":["J. 1ª Instancia nº 1 Palma","J. 1ª Instancia nº 2 Palma","J. 1ª Instancia nº 3 Palma","J. 1ª Instancia nº 4 Palma","J. 1ª Instancia nº 5 Palma","J. 1ª Instancia nº 6 Palma","J. 1ª Instancia nº 7 Palma","J. 1ª Instancia nº 1 Ibiza","J. 1ª Instancia nº 1 Manacor","J. 1ª Instancia nº 1 Inca"],
+  "Las Palmas":["J. 1ª Instancia nº 1 Las Palmas de Gran Canaria","J. 1ª Instancia nº 2 Las Palmas de Gran Canaria","J. 1ª Instancia nº 3 Las Palmas de Gran Canaria","J. 1ª Instancia nº 4 Las Palmas de Gran Canaria","J. 1ª Instancia nº 5 Las Palmas de Gran Canaria","J. 1ª Instancia nº 6 Las Palmas de Gran Canaria","J. 1ª Instancia nº 1 Santa Cruz de Tenerife","J. 1ª Instancia nº 2 Santa Cruz de Tenerife","J. 1ª Instancia nº 3 Santa Cruz de Tenerife","J. 1ª Instancia nº 4 Santa Cruz de Tenerife","J. 1ª Instancia nº 1 San Cristóbal de La Laguna","J. 1ª Instancia nº 1 Arrecife","J. 1ª Instancia nº 1 Puerto del Rosario"]
+};
+
+// Plazos medios CGPJ por provincia (meses) como fallback
+const PLAZOS_CGPJ = {
+  "Madrid":{admision:4,subasta:18,total:24},"Barcelona":{admision:5,subasta:22,total:28},
+  "Valencia":{admision:6,subasta:24,total:32},"Málaga":{admision:7,subasta:26,total:36},
+  "Sevilla":{admision:6,subasta:22,total:30},"Murcia":{admision:5,subasta:20,total:27},
+  "Zaragoza":{admision:4,subasta:16,total:22},"Palma":{admision:5,subasta:18,total:25},
+  "Las Palmas":{admision:6,subasta:20,total:28}
+};
+
+function loadJuzgados(){try{return JSON.parse(localStorage.getItem('npl_juzgados_v1'))||{}}catch(e){return{}}}
+function saveJuzgados(d){localStorage.setItem('npl_juzgados_v1',JSON.stringify(d))}
+
+function getPlazosJuzgado(juzgadoNombre,direccion){
+  // Buscar en datos propios primero
+  const datos=loadJuzgados();
+  if(juzgadoNombre&&datos[juzgadoNombre]&&(datos[juzgadoNombre].admision||datos[juzgadoNombre].subasta)){
+    return{...datos[juzgadoNombre],fuente:'propios',juzgado:juzgadoNombre};
+  }
+  // Fallback: datos CGPJ por provincia
+  if(direccion){
+    const dir=direccion.toLowerCase();
+    for(const[prov,plazos] of Object.entries(PLAZOS_CGPJ)){
+      if(dir.includes(prov.toLowerCase().split(' ')[0])){
+        return{...plazos,fuente:'cgpj',juzgado:null};
+      }
+    }
+  }
+  return{admision:6,subasta:22,total:30,fuente:'estimacion',juzgado:null};
+}
+
+function detectarProvincia(direccion){
+  if(!direccion)return null;
+  const d=direccion.toLowerCase();
+  for(const prov of Object.keys(JUZGADOS_DB)){
+    if(d.includes(prov.toLowerCase().split(' ')[0]))return prov;
+  }
+  return null;
+}
+
 function score(d,c){
   let s=60;
   if(d.tipo!=='hipotecario_primera')s+=15;if(d.clausulas==='si')s+=10;if(d.vulnerabilidad==='no')s+=5;
@@ -347,6 +468,14 @@ function score(d,c){
   if(d.clausulas==='pendiente')s-=20;if(d.epi==='alto')s-=10;if(c.rs<0)s-=15;
   if(d.fase==='subasta_senalada'||d.fase==='tasacion_hecha')s+=5;
   if(d.liquidez==='alta')s+=5;if(d.liquidez==='baja')s-=10;
+  // Penalización por plazo judicial
+  if(d.estrategia!=='extrajudicial'&&d.juzgado){
+    const p=getPlazosJuzgado(d.juzgado,d.direccion);
+    const total=p.total||30;
+    if(total>48)s-=20;
+    else if(total>30)s-=10;
+    else if(total>18)s-=5;
+  }
   return Math.max(0,Math.min(100,Math.round(s)));
 }
 function calcNego(d,c,sc){
@@ -440,21 +569,29 @@ function formHTML(tipo){
       <div class="field"><label>Referencia</label><input type="text" id="f-ref" placeholder="APT-MALAGA-001"></div>
       <div class="g2">
         <div class="field"><label>Tipo crédito</label><select id="f-tipo"><option value="hipotecario_segunda">Hipotecario 2ª vivienda</option><option value="hipotecario_primera">Hipotecario 1ª vivienda</option><option value="ordinario">Ordinario</option></select></div>
-        <div class="field"><label>Estrategia</label><select id="f-est"><option value="extrajudicial">Extrajudicial</option><option value="judicial">Judicial</option><option value="dual">Dual</option></select></div>
+        <div class="field"><label>Estrategia</label><select id="f-est" onchange="toggleCamposJudiciales()"><option value="extrajudicial">Extrajudicial</option><option value="judicial">Judicial</option><option value="dual">Dual</option></select></div>
       </div>
       <div class="g3">
         <div class="field"><label>Capital (€)</label><input type="number" id="f-cap" placeholder="150000"></div>
         <div class="field"><label>Intereses ord. (€)</label><input type="number" id="f-int" placeholder="12000"></div>
-        <div class="field"><label>${esInv?'Precio compra (€)':'Precio estimado (€)'}</label><input type="number" id="f-pre" placeholder="90000"></div>
+        <div class="field"><label>${esInv?'Precio compra (€) *':'Precio estimado (€) *'}</label><input type="number" id="f-pre" placeholder="90000"></div>
       </div>
-      <div class="g2">
-        <div class="field"><label>Fase procesal</label><select id="f-fase"><option value="prejudicial">Prejudicial</option><option value="monitorio">Monitorio</option><option value="ejecucion_admitida">Ejecución admitida</option><option value="tasacion_hecha">Tasación judicial</option><option value="subasta_senalada">Subasta señalada</option></select></div>
-        <div class="field"><label>Último pago</label><input type="date" id="f-fecha"></div>
+      <div id="f-bloque-judicial" style="display:none">
+        <div class="g2">
+          <div class="field"><label>Fase procesal</label><select id="f-fase" onchange="actualizarJuzgadoSugerido()"><option value="prejudicial">Prejudicial (MASC/OVC)</option><option value="monitorio">Monitorio</option><option value="ejecucion_admitida">Ejecución admitida</option><option value="tasacion_hecha">Tasación judicial</option><option value="subasta_senalada">Subasta señalada</option></select></div>
+          <div class="field"><label>Último pago</label><input type="date" id="f-fecha"></div>
+        </div>
+        <div class="field">
+          <label>Juzgado competente</label>
+          <select id="f-juzgado" onchange="mostrarPlazosPreview()"><option value="">— Se sugiere según dirección —</option></select>
+        </div>
+        <div id="f-plazos-preview" style="display:none;background:#E4F0FC;border:0.5px solid #9DCAF0;border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:#0F3D6E;line-height:1.6"></div>
+        <div class="g3">
+          <div class="field"><label>Cláusulas abusivas</label><select id="f-cla"><option value="si">Resueltas</option><option value="no_revisadas">Sin revisar</option><option value="pendiente">Pendiente</option></select></div>
+          <div class="field"><label>Vulnerabilidad</label><select id="f-vul"><option value="no">No</option><option value="riesgo">Riesgo</option><option value="si">Declarada</option></select></div>
+          <div class="field"><label>EPI</label><select id="f-epi"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select></div>
+        </div>
       </div>
-      <div class="g3">
-        <div class="field"><label>Cláusulas</label><select id="f-cla"><option value="si">Resueltas</option><option value="no_revisadas">Sin revisar</option><option value="pendiente">Pendiente</option></select></div>
-        <div class="field"><label>Vulnerabilidad</label><select id="f-vul"><option value="no">No</option><option value="riesgo">Riesgo</option><option value="si">Declarada</option></select></div>
-        <div class="field"><label>EPI</label><select id="f-epi"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select></div>
       </div>
     </div>
     <div class="panel">
@@ -586,14 +723,61 @@ function selDir(i){
   const item=items[i];
   document.getElementById('f-dir').value=decodeURIComponent(item.dataset.d);
   document.getElementById('f-addr-sug').style.display='none';
+  actualizarJuzgadoSugerido();
 }
 document.addEventListener('click',e=>{const s=document.getElementById('f-addr-sug');if(s&&!e.target.closest('.addr-wrap'))s.style.display='none';});
 
-// ── GUARDAR ───────────────────────────────────────────────────────────────────
+// ── FORMULARIO DINÁMICO: EXTRAJUDICIAL VS JUDICIAL ────────────────────────────
+function toggleCamposJudiciales(){
+  const est=vv('f-est');
+  const bloque=document.getElementById('f-bloque-judicial');
+  if(!bloque)return;
+  bloque.style.display=(est==='extrajudicial')?'none':'block';
+  if(est!=='extrajudicial')actualizarJuzgadoSugerido();
+}
+
+function actualizarJuzgadoSugerido(){
+  const dir=vv('f-dir');
+  const prov=detectarProvincia(dir);
+  const sel=document.getElementById('f-juzgado');
+  if(!sel)return;
+  const curVal=sel.value;
+  sel.innerHTML='<option value="">— Seleccionar juzgado —</option>';
+  if(prov){
+    const juzgados=getJuzgadosDeProvincia(prov);
+    juzgados.forEach(j=>{
+      const opt=document.createElement('option');
+      opt.value=j;opt.textContent=j;
+      sel.appendChild(opt);
+    });
+    if(juzgados.length&&!curVal){
+      // Sugerir el primero de la provincia detectada como orientativo
+      sel.value='';
+    }
+  }
+  if(curVal)sel.value=curVal;
+  mostrarPlazosPreview();
+}
+
+function mostrarPlazosPreview(){
+  const juzgado=vv('f-juzgado');
+  const dir=vv('f-dir');
+  const prev=document.getElementById('f-plazos-preview');
+  if(!prev)return;
+  if(!juzgado&&!dir){prev.style.display='none';return;}
+  const p=getPlazosJuzgado(juzgado,dir);
+  const fuenteTxt=p.fuente==='propios'?'📊 Datos propios registrados':p.fuente==='cgpj'?`📈 Estimación CGPJ (${p.provincia})`:'⚠️ Estimación genérica — sin datos de la zona';
+  prev.style.display='block';
+  prev.innerHTML=`<strong>Plazo estimado:</strong> Admisión ~${p.admision||'?'} meses · Subasta ~${p.subasta||'?'} meses · <strong>Total ~${p.total||'?'} meses</strong><br><span style="opacity:.75;font-size:11px">${fuenteTxt}</span>`;
+}
+
+
 function guardarOp(tipo){
   const ref=vv('f-ref');if(!ref){alert('Introduce una referencia');return;}
   const capital=nn('f-cap');if(!capital){alert('Introduce el capital pendiente');return;}
-  const d={id:Date.now().toString(),ref,tipo:vv('f-tipo'),capital,intereses:nn('f-int'),fecha_pago:vv('f-fecha'),fase:vv('f-fase'),estrategia:vv('f-est'),clausulas:vv('f-cla'),vulnerabilidad:vv('f-vul'),epi:vv('f-epi'),precio:nn('f-pre'),tasacion:nn('f-tas'),mercado:nn('f-mer'),cargas:nn('f-car'),capex:nn('f-cap2'),meses:nn('f-mes')||12,liquidez:vv('f-liq'),ocupacion:vv('f-ocu'),obs:vv('f-obs'),direccion:vv('f-dir'),refCatastral:vv('f-refcat'),tipo_inmueble:vv('f-tipoInm'),metros:nn('f-metros'),habitaciones:nn('f-hab'),banos:nn('f-banos'),planta:vv('f-planta'),fecha:new Date().toISOString(),docs:curDocs.map(x=>x.nombre),tipoOp:tipo,finalizada:false};
+  const precio=nn('f-pre');if(!precio){alert('Introduce el precio de compra/estimado — es la base del análisis de rentabilidad');return;}
+  const esJudicial=vv('f-est')!=='extrajudicial';
+  const d={id:Date.now().toString(),ref,tipo:vv('f-tipo'),capital,intereses:nn('f-int'),fecha_pago:vv('f-fecha'),fase:esJudicial?vv('f-fase'):null,estrategia:vv('f-est'),clausulas:esJudicial?vv('f-cla'):null,vulnerabilidad:esJudicial?vv('f-vul'):null,epi:esJudicial?vv('f-epi'):null,juzgado:esJudicial?vv('f-juzgado'):null,precio,tasacion:nn('f-tas'),mercado:nn('f-mer'),cargas:nn('f-car'),capex:nn('f-cap2'),meses:nn('f-mes')||12,liquidez:vv('f-liq'),ocupacion:vv('f-ocu'),obs:vv('f-obs'),direccion:vv('f-dir'),refCatastral:vv('f-refcat'),tipo_inmueble:vv('f-tipoInm'),metros:nn('f-metros'),habitaciones:nn('f-hab'),banos:nn('f-banos'),planta:vv('f-planta'),fecha:new Date().toISOString(),docs:curDocs.map(x=>x.nombre),tipoOp:tipo,finalizada:false};
   const c=calc(d);const sc=score(d,c);d.score=sc;
   document.getElementById('f-placeholder').style.display='none';
   document.getElementById('f-resultado').style.display='block';
@@ -664,6 +848,13 @@ function generarDictamen(d,c,sc){
   if(d.epi==='alto')r.push('• EPI alto — riesgo quita judicial (art. 497 TRLC)');
   if(c.ltv>90)r.push(`• LTV ${pct(c.ltv)} — colchón insuficiente`);
   if(c.rs<0)r.push(`• ROI estrés negativo (${pct(c.rs)})`);
+  let plazoTxt='';
+  if(d.estrategia!=='extrajudicial'){
+    const pj=getPlazosJuzgado(d.juzgado,d.direccion);
+    const fuenteTxt=pj.fuente==='propios'?'datos propios':pj.fuente==='cgpj'?'estimación CGPJ':'estimación genérica';
+    if((pj.total||0)>36)r.push(`• Plazo judicial estimado elevado: ~${pj.total} meses (${fuenteTxt}) — penaliza score y TIR real`);
+    plazoTxt=`\nPLAZO JUDICIAL${d.juzgado?` (${d.juzgado})`:''}: Admisión ~${pj.admision||'?'}m · Subasta ~${pj.subasta||'?'}m · Total ~${pj.total||'?'}m (${fuenteTxt})\n`;
+  }
   if(!r.length)r.push('• Sin riesgos críticos identificados');
   const n=calcNego(d,c,sc);
   let p=[];
@@ -671,7 +862,7 @@ function generarDictamen(d,c,sc){
   p.push(`2. Precio máximo absoluto: €${fmt(n.precioMax)}`);
   p.push('3. Notificar cesión al deudor y al juzgado (art. 16 LEC)');
   if(d.clausulas==='no_revisadas')p.push('4. Revisar cláusulas abusivas antes del cierre');
-  return `DICTAMEN: ${d.ref}\n${'─'.repeat(34)}\nVALORACIÓN: ${verd} (${sc}/100)\n${d.direccion?`INMUEBLE: ${d.direccion}\n`:''}${d.refCatastral?`REF. CATASTRAL: ${d.refCatastral}\n`:''}\n1. RIESGOS\n${r.join('\n')}\n\n2. NEGOCIACIÓN\nPrimera oferta: €${fmt(n.primeraOferta)}\nÓptimo: €${fmt(n.precioOpt)} | Máximo: €${fmt(n.precioMax)}\n\n3. PASOS\n${p.join('\n')}\n${'─'.repeat(34)}`;
+  return `DICTAMEN: ${d.ref}\n${'─'.repeat(34)}\nVALORACIÓN: ${verd} (${sc}/100)\n${d.direccion?`INMUEBLE: ${d.direccion}\n`:''}${d.refCatastral?`REF. CATASTRAL: ${d.refCatastral}\n`:''}${plazoTxt}\n1. RIESGOS\n${r.join('\n')}\n\n2. NEGOCIACIÓN\nPrimera oferta: €${fmt(n.primeraOferta)}\nÓptimo: €${fmt(n.precioOpt)} | Máximo: €${fmt(n.precioMax)}\n\n3. PASOS\n${p.join('\n')}\n${'─'.repeat(34)}`;
 }
 
 // ── RENDER FICHA FISCAL ───────────────────────────────────────────────────────
@@ -887,8 +1078,9 @@ function abrirFormulario(tipo){
   document.getElementById('form-body').innerHTML=formHTML(tipo);
   document.getElementById('form-overlay').classList.add('open');
   document.body.style.overflow='hidden';
+  toggleCamposJudiciales();
 }
-function limpiarForm(){document.getElementById('form-body').innerHTML=formHTML(curFormTipo);curDocs=[];}
+function limpiarForm(){document.getElementById('form-body').innerHTML=formHTML(curFormTipo);curDocs=[];toggleCamposJudiciales();}
 function closeMod(id,e){
   if(e&&e.target!==document.getElementById(id))return;
   document.getElementById(id).classList.remove('open');
@@ -931,13 +1123,64 @@ function exportarUltimo(){
 
 // ── NAVEGACIÓN Y RENDER ───────────────────────────────────────────────────────
 function showPage(name){
-  document.querySelectorAll('.ni').forEach((b,i)=>{const ns=['dashboard','inversiones','estudio','alertas'];b.classList.toggle('active',ns[i]===name);});
+  document.querySelectorAll('.ni').forEach((b,i)=>{const ns=['dashboard','inversiones','estudio','alertas','juzgados'];b.classList.toggle('active',ns[i]===name);});
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   if(name==='dashboard')rDash();
   if(name==='inversiones')rInversiones('todas');
   if(name==='estudio')rEstudio();
   if(name==='alertas')rAlertas();
+  if(name==='juzgados')rJuzgados();
+}
+
+// ── RENDER MÓDULO JUZGADOS ─────────────────────────────────────────────────────
+function rJuzgados(){
+  const sel=document.getElementById('j-filtro-prov');
+  if(sel&&sel.options.length<=1){
+    Object.keys(JUZGADOS_DB).forEach(prov=>{
+      const opt=document.createElement('option');opt.value=prov;opt.textContent=prov;sel.appendChild(opt);
+    });
+  }
+  filtrarJuzgados();
+}
+function filtrarJuzgados(){
+  const provFiltro=vv('j-filtro-prov');
+  const busq=(vv('j-buscar')||'').toLowerCase();
+  const datos=loadJuzgados();
+  let filas=[];
+  Object.entries(JUZGADOS_DB).forEach(([prov,lista])=>{
+    if(provFiltro&&provFiltro!==prov)return;
+    lista.forEach(j=>{
+      if(busq&&!j.toLowerCase().includes(busq))return;
+      filas.push({juzgado:j,provincia:prov,...((datos[j])||{admision:'',subasta:'',total:'',notas:''})});
+    });
+  });
+  const tbody=document.getElementById('j-tbody');
+  if(!filas.length){tbody.innerHTML=`<tr><td colspan="7" style="padding:24px;text-align:center;color:#8A9BB0">Sin resultados</td></tr>`;return;}
+  tbody.innerHTML=filas.map(f=>{
+    const id=f.juzgado.replace(/[^a-zA-Z0-9]/g,'_');
+    return`<tr>
+      <td style="padding:8px 14px;font-size:12px;font-weight:500">${f.juzgado}</td>
+      <td style="padding:8px 14px;font-size:11px;color:#8A9BB0">${f.provincia}</td>
+      <td style="padding:6px 10px"><input type="number" value="${f.admision}" id="jad_${id}" style="width:55px;padding:5px 6px;border:0.5px solid #C8D0DC;border-radius:5px;font-size:12px;text-align:right"></td>
+      <td style="padding:6px 10px"><input type="number" value="${f.subasta}" id="jsu_${id}" style="width:55px;padding:5px 6px;border:0.5px solid #C8D0DC;border-radius:5px;font-size:12px;text-align:right"></td>
+      <td style="padding:6px 10px"><input type="number" value="${f.total}" id="jto_${id}" style="width:55px;padding:5px 6px;border:0.5px solid #C8D0DC;border-radius:5px;font-size:12px;text-align:right"></td>
+      <td style="padding:6px 10px"><input type="text" value="${f.notas||''}" id="jno_${id}" placeholder="Notas..." style="width:140px;padding:5px 6px;border:0.5px solid #C8D0DC;border-radius:5px;font-size:12px"></td>
+      <td style="padding:6px 10px"><button class="btn btn-dark btn-xs" onclick="guardarPlazoJuzgado('${f.juzgado.replace(/'/g,"\\'")}','${id}')">💾</button></td>
+    </tr>`;
+  }).join('');
+}
+function guardarPlazoJuzgado(juzgadoNombre,id){
+  const datos=loadJuzgados();
+  datos[juzgadoNombre]={
+    admision:parseFloat(document.getElementById('jad_'+id)?.value)||null,
+    subasta:parseFloat(document.getElementById('jsu_'+id)?.value)||null,
+    total:parseFloat(document.getElementById('jto_'+id)?.value)||null,
+    notas:document.getElementById('jno_'+id)?.value||''
+  };
+  saveJuzgadosData(datos);
+  const btn=event.target;btn.textContent='✓';btn.style.background='#2A6E14';
+  setTimeout(()=>{btn.textContent='💾';btn.style.background='';},1200);
 }
 
 function rDash(){
