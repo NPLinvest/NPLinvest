@@ -2073,5 +2073,73 @@ function updatePill(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMod('ficha-overlay');closeMod('form-overlay');}});
 updatePill();rDash();
 </script>
+  <script>
+(function () {
+  if (typeof loadInv !== 'function') {
+    console.warn('NPL sync: la app aún no está cargada.');
+    return;
+  }
+  const _saveInv = saveInv, _saveEst = saveEst, _saveGastos = saveGastos,
+    _saveJuz = saveJuzgadosData, _saveRes = saveResoluciones,
+    _saveTar = saveTareas, _saveSeg = saveSeguimiento;
+  let _syncTimer = null;
+  async function _pushAirtable() {
+    try {
+      const payload = {
+        inversiones: loadInv(), estudios: loadEst(), gastos: loadGastos(),
+        juzgados: loadJuzgados(), resoluciones: loadResoluciones(),
+        tareas: loadTareas(), seguimiento: loadSeguimiento()
+      };
+      await fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.error('Sync Airtable falló (datos a salvo en este navegador):', e);
+    }
+  }
+  function _scheduleSync() {
+    clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(_pushAirtable, 800);
+  }
+  saveInv = function (d) { _saveInv(d); _scheduleSync(); };
+  saveEst = function (d) { _saveEst(d); _scheduleSync(); };
+  saveGastos = function (d) { _saveGastos(d); _scheduleSync(); };
+  saveJuzgadosData = function (d) { _saveJuz(d); _scheduleSync(); };
+  saveResoluciones = function (d) { _saveRes(d); _scheduleSync(); };
+  saveTareas = function (d) { _saveTar(d); _scheduleSync(); };
+  saveSeguimiento = function (d) { _saveSeg(d); _scheduleSync(); };
+  async function _hydrateAirtable() {
+    try {
+      const r = await fetch('/api/data');
+      if (r.ok) {
+        const d = await r.json();
+        const remoto = (d.inversiones?.length || 0) + (d.estudios?.length || 0)
+          + (d.gastos?.length || 0) + (d.resoluciones?.length || 0)
+          + (d.tareas?.length || 0) + (d.seguimiento?.length || 0)
+          + Object.keys(d.juzgados || {}).length;
+        const local = loadInv().length + loadEst().length;
+        if (remoto === 0 && local > 0) {
+          await _pushAirtable();
+        } else {
+          if (d.inversiones) _saveInv(d.inversiones);
+          if (d.estudios) _saveEst(d.estudios);
+          if (d.gastos) _saveGastos(d.gastos);
+          if (d.juzgados) _saveJuz(d.juzgados);
+          if (d.resoluciones) _saveRes(d.resoluciones);
+          if (d.tareas) _saveTar(d.tareas);
+          if (d.seguimiento) _saveSeg(d.seguimiento);
+        }
+      }
+    } catch (e) {
+      console.warn('Airtable no disponible; uso datos de este navegador.', e);
+    }
+    if (typeof updatePill === 'function') updatePill();
+    if (typeof rDash === 'function') rDash();
+  }
+  _hydrateAirtable();
+})();
+</script>
 </body>
 </html>
